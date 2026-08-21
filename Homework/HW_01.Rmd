@@ -1,7 +1,7 @@
 ---
 title: "HW_01"
 author: "Henry Traynor"
-date: "`r Sys.Date()`"
+date: "Due: 25 August"
 output:
   pdf_document: default
   html_document: default
@@ -11,6 +11,50 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Homework 01
-Henry Traynor
-Due: 25 August
+### Assignment
+
+Create a self-contained R script (or better yet an Rmarkdown file) to do the following:
+
+Simulate logistic regression data according to $y_i \sim \textrm{Bern}(p_i)$ and $\textrm{logit}(p_i) = \beta_0 + \beta_1x_i$ with $\beta_0=-1$ and $\beta_1=1$. Generate the covariate using `x <- rnorm(n=100)`.
+
+```{r}
+beta_0 <- -1
+beta_1 <- 1
+x <- rnorm(n=100)
+
+y <- rbinom(100, 
+            size=1, 
+            prob = plogis(beta_0 + beta_1 * x))
+```
+
+Fit a logistic regression model to the simulated data using the `glm` function. Create a figure showing $x$ and $y$ with the fitted regression line. Use `predict` to get the fitted line.
+
+```{r}
+library(ggplot2)
+logistic_regression <- glm(y ~ x,
+                           family = binomial)
+predicted_data <- data.frame(
+  x = seq(min(x), max(x), length.out = 100)
+)
+
+predicted_data$y_predicted <- predict(logistic_regression,
+                                newdata = predicted_data,
+                                type = "response")
+
+data <- data.frame(x, y)
+
+ggplot() +
+  geom_point(
+    data = data,
+    aes(x = x, y = y, color = "Observed data")
+  ) +
+  geom_line(
+    data = predicted_data,
+    aes(x = x, y = y_predicted, color = "Fitted regression")
+  ) +
+  labs(
+    x = "x",
+    y = "y",
+    color = "Data"
+  )
+```
