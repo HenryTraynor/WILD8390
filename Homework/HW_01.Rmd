@@ -1,0 +1,16 @@
+---
+title: "HW_01"
+author: "Henry Traynor"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Homework 01
+Henry Traynor
+Due: 25 August
