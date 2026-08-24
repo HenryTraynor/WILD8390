@@ -8,20 +8,33 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+library(formatR)
+knitr::opts_chunk$set(
+  tidy = TRUE,
+  tidy.opts = list(width.cutoff = 60),
+  echo = TRUE)
 ```
 
 ### Assignment
+
+All code can be found here:
+https://github.com/HenryTraynor/WILD8390/blob/main/Homework/HW_01.Rmd
 
 Create a self-contained R script (or better yet an Rmarkdown file) to do the following:
 
 Simulate logistic regression data according to $y_i \sim \textrm{Bern}(p_i)$ and $\textrm{logit}(p_i) = \beta_0 + \beta_1x_i$ with $\beta_0=-1$ and $\beta_1=1$. Generate the covariate using `x <- rnorm(n=100)`.
 
 ```{r}
+# Set seed so results are the same in development and written answers
+set.seed(314159)
+
+# initialize parameters
 beta_0 <- -1
 beta_1 <- 1
+# generate predictor variable
 x <- rnorm(n=100)
-
+# generate response
+# 'plogis()' gives inverse 'logit()' to yield probability
 y <- rbinom(100, 
             size=1, 
             prob = plogis(beta_0 + beta_1 * x))
@@ -31,16 +44,18 @@ Fit a logistic regression model to the simulated data using the `glm` function. 
 
 ```{r}
 library(ggplot2)
+
 logistic_regression <- glm(y ~ x,
                            family = binomial)
+# df to store regression data
 predicted_data <- data.frame(
   x = seq(min(x), max(x), length.out = 100)
 )
-
-predicted_data$y_predicted <- predict(logistic_regression,
+predicted_data$y_hat <- predict(logistic_regression,
                                 newdata = predicted_data,
                                 type = "response")
 
+# df to store model input data for plotting
 data <- data.frame(x, y)
 
 ggplot() +
@@ -50,11 +65,156 @@ ggplot() +
   ) +
   geom_line(
     data = predicted_data,
-    aes(x = x, y = y_predicted, color = "Fitted regression")
+    aes(x = x, y = y_hat, color = "Logistic regression")
   ) +
   labs(
     x = "x",
     y = "y",
     color = "Data"
   )
+```
+
+Fit the logistic regression model in JAGS. Use `Normal(0,var=10)` priors for the regression coefficients.
+
+```{r}
+library(rjags)
+# Model created using reference of the JAGS Version 4.3.0 user manual and rjags documentation on rdocumentation.com . I will reference what section my code is coming from in comments.
+# link: https://pilotfiber.dl.sourceforge.net/project/mcmc-jags/Manuals/4.x/jags_user_manual.pdf?viasf=1&fid=d949167c0f4eb392&e=1787674022&st=a8q7euJf-PwAbqj3yzUU_Q
+jags_data <- list(
+  y = y,
+  x = x,
+  n = length(y)
+)
+
+#Chapter 2: model creation
+#Note that dnorm() in JAGS/BUGS takes precision, not variance, so I have used dnorm(0,1/10) for my priors.
+
+string <- "model {
+  for(i in 1:n) {
+    logit(p[i]) <- beta_0 + beta_1 * x[i]
+    y[i] ~ dbern(p[i])
+  }
+  beta_0 ~ dnorm(0, 1/10)
+  beta_1 ~ dnorm(0, 1/10)
+}
+"
+
+# https://www.rdocumentation.org/packages/rjags/versions/4-17/topics/jags.model
+# I was unsure what satisfactory 'n.chains' or 'n.adapt' would be so I used values similar to those shown in documentation
+jags_model <- jags.model(
+  textConnection(string),
+  data = jags_data,
+  n.chains = 3,
+  n.adapt = 1000
+)
+
+# burn-in period as described in 4.1 of JAGS manual
+update(
+  jags_model,
+  n.iter = 1000
+)
+
+# posterior samples: 4.1 of JAGS manual
+samples <- coda.samples(
+  model = jags_model,
+  variable.names = c("beta_0", "beta_1"),
+  n.iter = 5000
+)
+
+summary(samples)
+```
+
+Compare and interpret the estimates of $\beta_0$ and $\beta_1$ from the classical analysis and the Bayesian analysis.
+
+```{r}
+# 'samples' is a mcmc.list so it needs to be a dataframe/matrix to pull values from
+samples_matrix <- as.matrix(samples)
+
+results <- data.frame(
+  Parameter = c("beta_0", "beta_1"),
+  GLM = coef(logistic_regression),
+  JAGS = c(
+    mean(samples_matrix[, "beta_0"]),
+    mean(samples_matrix[, "beta_1"])
+  ),
+  JAGS_Lower = c(
+    quantile(samples_matrix[, "beta_0"], 0.025),
+    quantile(samples_matrix[, "beta_1"], 0.025)
+  ),
+  JAGS_Upper = c(
+    quantile(samples_matrix[, "beta_0"], 0.975),
+    quantile(samples_matrix[, "beta_1"], 0.975)
+  )
+)
+
+# round our decimals for cleanliness' sake
+results[, -1] <- round(results[, -1], 3)
+results
+```
+
+Our GLM does a good job of estimating $\beta$ values. The Bayesian estimate from JAGS is less accurate but still captures the true values in its confidence intervals. Estimates for $\beta_0$ and $\beta_1$ differ by 0.006 and 0.021, respectively. Most importantly, both models correctly determined the sign of $\beta_1$, showing increases in $x$ are associated with an increasing probability of $y=1$.
+
+I was curious to see the JAGS output plotted. So here is a figure showing both regressions together. Gray region represents the uncertainty provided by the Bayesian model.
+
+```{r}
+jags_predicted <- data.frame(
+  x = seq(min(x), max(x), length.out = 100)
+)
+
+jags_predictions <- sapply(
+  jags_predicted$x,
+  function(x_value) {
+    plogis(
+      samples_matrix[, "beta_0"] +
+      samples_matrix[, "beta_1"] * x_value
+    )
+  }
+)
+
+jags_predicted$mean <- apply(
+  jags_predictions,
+  2,
+  mean
+)
+jags_predicted$lower <- apply(
+  jags_predictions,
+  2,
+  quantile,
+  0.025
+)
+jags_predicted$upper <- apply(
+  jags_predictions,
+  2,
+  quantile,
+  0.975
+)
+
+ggplot() +
+  geom_point(
+    data = data,
+    aes(x = x, y = y, color = "Observed data")
+  ) +
+  geom_line(
+    data = predicted_data,
+    aes(x = x, y = y_hat, color = "GLM")
+  ) +
+  geom_ribbon(
+    data = jags_predicted,
+    aes(
+      x = x,
+      ymin = lower,
+      ymax = upper
+    ),
+    alpha = 0.2
+  ) +
+  geom_line(
+    data = jags_predicted,
+    aes(x = x, y = mean, color = "JAGS")
+  ) +
+  labs(
+    x = "x",
+    y = "Probability of y = 1",
+    color = "Model"
+  ) +
+  theme_minimal()
 ```
