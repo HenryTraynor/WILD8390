@@ -17,8 +17,8 @@ knitr::opts_chunk$set(
 
 ### Assignment
 
-All code can be found here:
-https://github.com/HenryTraynor/WILD8390/blob/main/Homework/HW_01.Rmd
+PDF version available here:
+https://github.com/HenryTraynor/WILD8390/blob/main/Homework/HW_01.pdf
 
 Create a self-contained R script (or better yet an Rmarkdown file) to do the following:
 
