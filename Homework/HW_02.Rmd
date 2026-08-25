@@ -1,0 +1,29 @@
+---
+title: "HW_02"
+author: "Henry Traynor"
+date: "Due: 5:00pm, 31 August"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+library(formatR)
+knitr::opts_chunk$set(
+  tidy = TRUE,
+  tidy.opts = list(width.cutoff = 60),
+  echo = TRUE)
+```
+
+### Asignment
+
+Create a self-contained R script or Rmarkdown file to do the following:
+
+1. Import the Canada Warbler data (`cawa_data_2017_occu.csv`) and compute basic summary stats like we did earlier.
+
+* Data are “point count data” from North Carolina. 
+* Each 10-min survey was divided into 4, 2.5-min intervals
+
+2. Fit the single-season (static) occupancy model using `unmarked` and `JAGS`.
+
+3. Create a data.frame to compare the estimates of $\psi$, $p$, and `nSitesOccupied` from the two analyses. Compare point estimates and 95% CIs. Describe any differences you see in the estimates.
