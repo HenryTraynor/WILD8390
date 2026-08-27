@@ -1,0 +1,15 @@
+model {
+
+psi ~ dunif(0,1)            # Prior for occupancy parameter
+p ~ dunif(0,1)              # Prior for detection probability
+
+for(i in 1:nSites) {
+  z[i] ~ dbern(psi)         # Latent presence/absence
+  for(j in 1:nOccasions) {
+    y[i,j] ~ dbern(z[i]*p)  # Model for the data
+  }
+}
+
+sitesOccupied <- sum(z)     # Total number of sites occupied
+
+}
