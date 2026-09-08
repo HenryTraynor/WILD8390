@@ -1,0 +1,138 @@
+---
+title: "HW_03"
+author: "Henry Traynor"
+date: 'Due: 5:00pm, 8 September'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Create a self-contained R script or Rmarkdown/Quarto file to do the following:
+
+1. Fit an occupancy model in ‘unmarked’ to the Ruffed Grouse data (`"grouse_data.csv"`). Use all three covariates, with elevation and forest cover affecting occupancy and day of the year affecting detection probability.
+
+* Response: `grouse1`, `grouse2`, `grouse3`
+* Site covs: Elevation (`elev`), forest cover (`fc`)
+* Obs cov: Day of the year (`doy.1`, `doy.2`, `doy.3`)
+
+```{r Data import}
+setwd("C:/Users/henry/Desktop/WILD8390/Homework/HW03")
+grouse_data <- read.csv("grouse_data.csv")
+```
+
+```{r unmarked}
+library(unmarked)
+umf <-unmarkedFrameOccu(y = grouse_data[,c("grouse1", "grouse2", "grouse3")],
+                        siteCovs = grouse_data[,c("elev", "fc")],
+                        obsCovs = list(doy=grouse_data[,c("doy.1","doy.2","doy.3")])
+                        )
+summary(umf)
+
+# standarize cont. variables
+mean.elev <- mean(grouse_data[,"elev"])
+mean.forest <- mean(grouse_data[,"fc"])
+sd.elev <- sd(grouse_data[,"elev"])
+sd.forest <- sd(grouse_data[,"fc"])
+elev_s <- (grouse_data[,"elev"]-mean.elev)/sd.elev
+forest_s <- (grouse_data[,"fc"]-mean.forest)/sd.forest
+siteCovs(umf)$elev_s <- elev_s
+siteCovs(umf)$forest_s <- forest_s
+
+# fit the model
+fm <- occu(~elev_s+doy ~elev_s+forest_s, umf) # Standardized covariates
+fm
+
+# prediction
+pred.data <- data.frame(elev_s=seq(from=-3, to=3, length=100),
+                        forest_s=0, doy=100) # Standardized
+pred.data$elev <- pred.data$elev_s*sd.elev+mean.elev # Orig scale
+pred.data$fc <- pred.data$forest_s*sd.forest+mean.forest 
+
+psi.pred <- predict(fm, newdata=pred.data,
+                    type='state', append=TRUE)
+p.pred <- predict(fm, newdata=pred.data,
+                  type='det', append=TRUE)
+
+print(head(psi.pred, n=4), digits=2)
+print(head(p.pred, n=4), digits=2)
+```
+
+2. Make one prediction graph for occupancy and one for detection.
+
+```{r Plots: unmarked}
+# these plots might not generate here but will if you knit it. PDF is also available at github link at the top of document
+par(mai=c(0.9,0.9,0.1,0.1))  
+plot(Predicted ~ elev_s, psi.pred, type="l", ylab="Occurrence probability",
+     col="blue", xlab="Elevation (standardized)", ylim=0:1) 
+lines(lower ~ elev_s, psi.pred, col="grey"); lines(upper ~ elev_s, psi.pred, col="grey")
+
+par(mai=c(0.9,0.9,0.1,0.1))  
+plot(Predicted ~ elev, psi.pred, type="l", ylab="Occurrence probability",
+     col="blue", xlab="Elevation (original scale)", ylim=0:1)
+lines(lower ~ elev, psi.pred, col="grey"); lines(upper ~ elev, psi.pred, col="grey")
+```
+
+3. Create the same graphs as above, but using Bayesian methods.
+
+```{r Bayesian model}
+nSites <- nrow(grouse_data)
+nVisits <- 3
+
+jags.data <- list(y=grouse_data[,c("grouse1", "grouse2", "grouse3")],
+                  elev=elev_s,
+                  forest=forest_s,
+                  doy=grouse_data[,c("doy.1","doy.2","doy.3")],
+                  nSites=nSites,
+                  nOccasions=nVisits)
+
+jags.inits <- function() {
+    list(beta0=rnorm(1), alpha0=rnorm(1), z=rep(1, nSites))
+}
+
+jags.pars <- c("beta0", "beta1", "beta2",
+               "alpha0", "alpha1", "alpha2", "alpha3",
+               "sitesOccupied")
+
+library(jagsUI)
+library(coda)
+jags.post.samples <- jags.basic(data=jags.data, inits=jags.inits,
+                                parameters.to.save=jags.pars,
+                                model.file="occupancy-model-covs.jag",
+                                n.chains=3, n.adapt=100, n.burnin=0,
+                                n.iter=2000, parallel=TRUE)
+
+### ------------------------------------------
+### RUN THESE LINES IN YOUR CONSOLE
+### ------------------------------------------
+png("jags_plot.png", width = 500, height = 800)
+plot(jags.post.samples)
+
+psi.coef.post <- as.matrix(jags.post.samples[,c("beta0","beta1","beta2")])
+head(psi.coef.post, n=4)
+
+n.iter <- nrow(psi.coef.post)  
+psi.post.pred <- matrix(NA, nrow=n.iter, ncol=nrow(pred.data))
+
+for(i in 1:n.iter) {
+    psi.post.pred[i,] <- plogis(psi.coef.post[i,"beta0"] +
+                                psi.coef.post[i,"beta1"]*pred.data$elev_s)
+}
+
+plot(pred.data$elev, psi.post.pred[1,], type="l", xlab="Elevation",
+     ylab="Occurrence probability", ylim=c(0, 1), col=gray(0.8))
+
+for(i in 1:n.iter) {
+    lines(pred.data$elev, psi.post.pred[i,], col=gray(0.8))
+}
+
+pred.post.mean <- colMeans(psi.post.pred)
+pred.post.lower <- apply(psi.post.pred, 2, quantile, prob=0.025)
+pred.post.upper <- apply(psi.post.pred, 2, quantile, prob=0.975)
+lines(pred.data$elev, pred.post.mean, col="blue")
+lines(pred.data$elev, pred.post.lower, col="blue", lty=2)
+lines(pred.data$elev, pred.post.upper, col="blue", lty=2)
+```
