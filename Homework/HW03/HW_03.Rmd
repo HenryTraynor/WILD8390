@@ -63,7 +63,7 @@ print(head(p.pred, n=4), digits=2)
 
 2. Make one prediction graph for occupancy and one for detection.
 
-```{r Plots: unmarked}
+```{r Plots unmarked}
 # these plots might not generate here but will if you knit it. PDF is also available at github link at the top of document
 par(mai=c(0.9,0.9,0.1,0.1))  
 plot(Predicted ~ elev_s, psi.pred, type="l", ylab="Occurrence probability",
@@ -79,6 +79,31 @@ lines(lower ~ elev, psi.pred, col="grey"); lines(upper ~ elev, psi.pred, col="gr
 3. Create the same graphs as above, but using Bayesian methods.
 
 ```{r Bayesian model}
+model_string <- "
+model {
+
+# Priors for occupancy coefficients
+beta0 ~ dnorm(0, 0.5)  # 0.5 is 1/variance
+beta1 ~ dnorm(0, 0.5)
+beta2 ~ dnorm(0, 0.5)
+
+# Priors for detection coefficients
+alpha0 ~ dnorm(0, 0.5)  
+alpha1 ~ dnorm(0, 0.5)
+
+for(i in 1:nSites) {
+  logit(psi[i]) <- beta0 + beta1*elev[i] + beta2*forest[i]
+  z[i] ~ dbern(psi[i])            # Latent presence/absence
+  for(j in 1:nOccasions) {
+    logit(p[i,j]) <- alpha0 + alpha1*doy[i,j]
+    y[i,j] ~ dbern(z[i]*p[i,j])   # Data
+  }
+}
+
+sitesOccupied <- sum(z)
+
+}"
+
 nSites <- nrow(grouse_data)
 nVisits <- 3
 
@@ -94,7 +119,7 @@ jags.inits <- function() {
 }
 
 jags.pars <- c("beta0", "beta1", "beta2",
-               "alpha0", "alpha1", "alpha2", "alpha3",
+               "alpha0", "alpha1",
                "sitesOccupied")
 
 library(jagsUI)
