@@ -37,6 +37,14 @@ alpha0 <- -2
 alpha1 <- 1
 p <- plogis(alpha0 + alpha1*temp)
 
+# true lambda plots
+lambda.true <- c(
+  Hardwood = exp(beta0),
+  Mixed = exp(beta0 + beta1),
+  Pine = exp(beta0 + beta2)
+)
+lambda.true
+
 # simulate occupancy and detection data
 N <- rpois(nSites, lambda=lambda)         ## local abundance 
 y <- matrix(NA, nrow=nSites, ncol=nVisits)
@@ -93,10 +101,11 @@ plot(jags.post.samples[,jags.pars[4:5]])
 ```
 
 ```{r Bayesian Prediction}
+# extract beta values
 lambda.coef.post <- as.matrix(jags.post.samples[,c("beta0","beta1", "beta2")])
 head(lambda.coef.post, n=4)
-
 n.iter <- nrow(lambda.coef.post)
+# vector for predictive val
 forest.pred <- c(rep("Hardwood", 50),
                  rep("Mixed", 50),
                  rep("Pine",50)
@@ -107,16 +116,21 @@ forest.Pine.pred <- ifelse(forest.pred=="Pine", 1, 0)
 
 lambda.post.pred <- matrix(NA, nrow=n.iter, ncol=length(forest.pred))
 
+# we now use exp() rather than plogis() since lambda is log-linear rather than logit-linear
 for(i in 1:n.iter) {
-    lambda.post.pred[i,] <- plogis(lambda.coef.post[i,"beta0"] + lambda.coef.post[i,"beta1"]*forest.Mixed.pred + lambda.coef.post[i, "beta2"]*forest.Pine.pred)
+    lambda.post.pred[i,] <- exp(
+      lambda.coef.post[i,"beta0"] + 
+      lambda.coef.post[i,"beta1"] * forest.Mixed.pred + 
+      lambda.coef.post[i,"beta2"] * forest.Pine.pred
+      )
 }
 
 # plot showing forest type on categorical horiz. axis and lambda on continuous vert. vertical axis
-
+# pull out values for each forest type
 hardwood <- as.vector(lambda.post.pred[, 1:50])
 mixed    <- as.vector(lambda.post.pred[, 51:100])
 pine     <- as.vector(lambda.post.pred[, 101:150])
-
+#combine vectors in long form for easy graphing
 lambda.long <- data.frame(
   lambda = c(hardwood, mixed, pine),
   forest = rep(
@@ -124,22 +138,29 @@ lambda.long <- data.frame(
     times = c(length(hardwood), length(mixed), length(pine))
   )
 )
-
 library(ggplot2)
 ggplot(lambda.long, aes(x = lambda)) +
-  geom_histogram(bins = 30) +
+  geom_histogram() +
   facet_wrap(~forest, ncol = 3) +
   labs(
-    x = expression(lambda),
+    x = "lambda_hat",
     y = "Frequency"
-  ) +
-  theme_minimal()
+  ) + 
+  geom_vline(
+    data = data.frame(
+      forest = names(lambda.true),
+      lambda = lambda.true
+    ),
+    aes(xintercept = lambda, color = "True value"),
+    linetype = "solid"
+)
 ```
 
 ```{r Prior Sampling}
-jags.data2 <- jags.data
+jags.data2 <- jags.data # redefine data
 jags.data2$y[] <- NA     # Replace data with missing values
 
+# resample
 jags.prior.samples <- jags.basic(data=jags.data2,
                                  inits=jags.inits,
                                  parameters.to.save=jags.pars,
@@ -149,7 +170,6 @@ jags.prior.samples <- jags.basic(data=jags.data2,
                                  n.burnin=0,
                                  n.iter=2000,
                                  parallel=TRUE)
-
 summary(jags.prior.samples)
 ```
 
@@ -157,7 +177,7 @@ summary(jags.prior.samples)
 lambda.coef.prior <- as.matrix(jags.prior.samples[,c("beta0","beta1","beta2")])
 lambda.prior.pred <- matrix(NA, nrow=n.iter, ncol=length(forest.pred))
 for(i in 1:n.iter) {
-    lambda.prior.pred[i,] <- plogis(lambda.coef.prior[i,"beta0"] + lambda.coef.prior[i,"beta1"]*forest.Mixed.pred + lambda.coef.prior[i, "beta2"]*forest.Pine.pred)
+    lambda.prior.pred[i,] <- exp(lambda.coef.prior[i,"beta0"] + lambda.coef.prior[i,"beta1"]*forest.Mixed.pred + lambda.coef.prior[i, "beta2"]*forest.Pine.pred)
 }
 
 # plot showing forest type on categorical horiz. axis and lambda on continuous vert. vertical axis
@@ -168,17 +188,28 @@ lambda.long.prior <- data.frame(
   lambda = c(hardwood.prior, mixed.prior, pine.prior),
   forest = rep(
     c("Hardwood", "Mixed", "Pine"),
-    times = c(length(hardwood), length(mixed), length(pine))
+    times = c(
+      length(hardwood.prior),
+      length(mixed.prior),
+      length(pine.prior)
+    )
   )
 )
 ggplot(lambda.long.prior, aes(x = lambda)) +
-  geom_histogram(bins = 30) +
+  geom_histogram() +
   facet_wrap(~forest, ncol = 3) +
   labs(
-    x = expression(lambda),
+    x = "lambda_hat",
     y = "Frequency"
-  ) +
-  theme_minimal()
+  ) + 
+  geom_vline(
+    data = data.frame(
+      forest = names(lambda.true),
+      lambda = lambda.true
+    ),
+    aes(xintercept = lambda, color = "True value"),
+    linetype = "solid"
+  )
 ```
 
 ```{r Comparison Plot}
@@ -190,7 +221,7 @@ ggplot(lambda.combined,
        aes(x = lambda, fill = distribution)) +
   geom_histogram(
     position = "identity",
-    alpha = 0.5
+    alpha = 0.5,
   ) +
   facet_wrap(~ forest, ncol = 3) +
   labs(
