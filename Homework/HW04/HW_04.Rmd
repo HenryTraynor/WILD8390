@@ -86,34 +86,10 @@ jags.post.samples <- jags.basic(data=jags.data,
 
 ```{r Summary & Plots}
 summary(jags.post.samples[,jags.pars])
-plot(jags.post.samples[,paste0("N[", 1:4, "]")])
+plot(jags.post.samples[,paste0("N[", 1:2, "]")])
+plot(jags.post.samples[,paste0("N[", 3:4, "]")])
 plot(jags.post.samples[,jags.pars[1:3]])
 plot(jags.post.samples[,jags.pars[4:5]])
-```
-
-```{r Bayesian Prediction}
-p.coef.post <- as.matrix(jags.post.samples[,c("alpha0","alpha1")])
-head(p.coef.post, n=4)
-
-n.iter <- nrow(p.coef.post)
-temp.pred <- seq(-3, 3, length=50)
-p.post.pred <- matrix(NA, nrow=n.iter, ncol=length(temp.pred))
-
-for(i in 1:n.iter) {
-    p.post.pred[i,] <- plogis(p.coef.post[i,"alpha0"] +
-                              p.coef.post[i,"alpha1"]*temp.pred)
-}
-
-plot(temp.pred, p.post.pred[1,], type="l", xlab="Temperature (standardized)",
-     ylab="Detection probability", ylim=c(0, 1), col=gray(0.8))
-for(i in seq(1, n.iter, by=10)) {  ## Thin by 10
-    lines(temp.pred, p.post.pred[i,], col=gray(0.8))  }
-pred.post.mean <- colMeans(p.post.pred)
-pred.post.lower <- apply(p.post.pred, 2, quantile, prob=0.025)
-pred.post.upper <- apply(p.post.pred, 2, quantile, prob=0.975)
-lines(temp.pred, pred.post.mean, col="blue")
-lines(temp.pred, pred.post.lower, col="blue", lty=2)
-lines(temp.pred, pred.post.upper, col="blue", lty=2)
 ```
 
 ```{r Bayesian Prediction}
@@ -135,17 +111,29 @@ for(i in 1:n.iter) {
     lambda.post.pred[i,] <- plogis(lambda.coef.post[i,"beta0"] + lambda.coef.post[i,"beta1"]*forest.Mixed.pred + lambda.coef.post[i, "beta2"]*forest.Pine.pred)
 }
 
-#-------------
-# left here; rest needs to be turned into forest & lambda
-#-------------
-for(i in seq(1, n.iter, by=10)) {  ## Thin by 10
-    lines(temp.pred, p.post.pred[i,], col=gray(0.8))  }
-pred.post.mean <- colMeans(p.post.pred)
-pred.post.lower <- apply(p.post.pred, 2, quantile, prob=0.025)
-pred.post.upper <- apply(p.post.pred, 2, quantile, prob=0.975)
-lines(temp.pred, pred.post.mean, col="blue")
-lines(temp.pred, pred.post.lower, col="blue", lty=2)
-lines(temp.pred, pred.post.upper, col="blue", lty=2)
+# plot showing forest type on categorical horiz. axis and lambda on continuous vert. vertical axis
+
+hardwood <- as.vector(lambda.post.pred[, 1:50])
+mixed    <- as.vector(lambda.post.pred[, 51:100])
+pine     <- as.vector(lambda.post.pred[, 101:150])
+
+lambda.long <- data.frame(
+  lambda = c(hardwood, mixed, pine),
+  forest = rep(
+    c("Hardwood", "Mixed", "Pine"),
+    times = c(length(hardwood), length(mixed), length(pine))
+  )
+)
+
+library(ggplot2)
+ggplot(lambda.long, aes(x = lambda)) +
+  geom_histogram(bins = 30) +
+  facet_wrap(~forest, ncol = 3) +
+  labs(
+    x = expression(lambda),
+    y = "Frequency"
+  ) +
+  theme_minimal()
 ```
 
 ```{r Prior Sampling}
@@ -166,31 +154,50 @@ summary(jags.prior.samples)
 ```
 
 ```{r Prior Prediction}
-p.coef.prior <- as.matrix(jags.prior.samples[,c("alpha0","alpha1")])
-p.prior.pred <- matrix(NA, nrow=n.iter, ncol=length(temp.pred))
+lambda.coef.prior <- as.matrix(jags.prior.samples[,c("beta0","beta1","beta2")])
+lambda.prior.pred <- matrix(NA, nrow=n.iter, ncol=length(forest.pred))
 for(i in 1:n.iter) {
-    p.prior.pred[i,] <- plogis(p.coef.prior[i,"alpha0"] +
-                               p.coef.prior[i,"alpha1"]*temp.pred)
+    lambda.prior.pred[i,] <- plogis(lambda.coef.prior[i,"beta0"] + lambda.coef.prior[i,"beta1"]*forest.Mixed.pred + lambda.coef.prior[i, "beta2"]*forest.Pine.pred)
 }
 
-pred.prior.mean <- colMeans(p.prior.pred)
-pred.prior.lower <- apply(p.prior.pred, 2, quantile, prob=0.025)
-pred.prior.upper <- apply(p.prior.pred, 2, quantile, prob=0.975)
+# plot showing forest type on categorical horiz. axis and lambda on continuous vert. vertical axis
+hardwood.prior <- as.vector(lambda.prior.pred[, 1:50])
+mixed.prior    <- as.vector(lambda.prior.pred[, 51:100])
+pine.prior     <- as.vector(lambda.prior.pred[, 101:150])
+lambda.long.prior <- data.frame(
+  lambda = c(hardwood.prior, mixed.prior, pine.prior),
+  forest = rep(
+    c("Hardwood", "Mixed", "Pine"),
+    times = c(length(hardwood), length(mixed), length(pine))
+  )
+)
+ggplot(lambda.long.prior, aes(x = lambda)) +
+  geom_histogram(bins = 30) +
+  facet_wrap(~forest, ncol = 3) +
+  labs(
+    x = expression(lambda),
+    y = "Frequency"
+  ) +
+  theme_minimal()
+```
 
-plot(temp.pred, p.post.pred[1,], type="n", xlab="Temperature (standardized)",
-     ylab="Detection probability", ylim=c(0, 1.3), col=gray(0.8))
-polygon(x=c(temp.pred, rev(temp.pred)),
-        y=c(pred.post.lower, rev(pred.post.upper)),
-        col=rgb(0,0,1,0.5), border=NA)                   # Post CI
-polygon(x=c(temp.pred, rev(temp.pred)),
-        y=c(pred.prior.lower, rev(pred.prior.upper)),
-        col=rgb(0,1,0,0.5), border=NA)                   # Prior CI
-for(i in seq(1, n.iter, by=100)) {  ## Thin by 100
-    lines(temp.pred, p.prior.pred[i,], col=gray(0.8))  } # Prior preds
-lines(temp.pred, pred.post.mean, col="blue", lwd=2)
-lines(temp.pred, pred.prior.mean, col="darkgreen", lwd=2)
-legend(-3, 1.3, c("Prior mean", "Prior samples", "Posterior mean"),
-       col=c("darkgreen", "grey", "blue"), lwd=2)
+```{r Comparison Plot}
+lambda.long$distribution <- "Posterior"
+lambda.long.prior$distribution <- "Prior"
+lambda.combined <- rbind(lambda.long, lambda.long.prior)
+
+ggplot(lambda.combined,
+       aes(x = lambda, fill = distribution)) +
+  geom_histogram(
+    position = "identity",
+    alpha = 0.5
+  ) +
+  facet_wrap(~ forest, ncol = 3) +
+  labs(
+    x = "lambda_hat",
+    y = "Frequency",
+    fill = "Distribution"
+  )
 ```
 
 
