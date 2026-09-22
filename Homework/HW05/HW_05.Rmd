@@ -1,0 +1,179 @@
+---
+title: "HW_04"
+author: "Henry Traynor"
+date: 'Due: 5:00pm, 29 September'
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Create a self-contained R script or Rmarkdown file to do the following:
+
+Simulate independent double observer data with the following properties:
+\begin{itemize}
+  \item nSites=200
+  \item $\lambda$=3
+  \item $p_1$=0.3 and $p_2$=0.5
+\end{itemize}
+
+```{r Data Simulation}
+set.seed(314159)
+
+nSites <- 200
+lambda <- 3
+
+N <- rpois(nSites, lambda)
+
+summary(N)
+mean(N)
+var(N)
+```
+
+```{r Obs Data}
+p1 <- 0.3
+p2 <- 0.5
+
+pi1 <- p1*(1-p2)
+pi2 <- (1-p1)*p2
+pi3 <- p1*p2
+pi4 <- (1-p1)*(1-p2)
+
+cp <- c(pi1, 
+        pi2, 
+        pi3
+        )
+
+y <- matrix(NA,
+            nrow=nSites,
+            ncol=3
+)
+
+colnames(y) <- c("obs1_only", 
+                 "obs2_only", 
+                 "both"
+                 )
+
+for(i in 1:nSites) {
+  counts <- rmultinom(1, size=N[i], prob = c(cp,pi4))
+  y[i,] <- counts[1:3]
+}
+
+head(y)
+summary(y)
+```
+
+Fit the model using `unmarked`. You will need to create an observation covariate indicating observer A and B. When you create the `unmarkedFrameMPois`, use `type=double`.
+
+```{r unmarked}
+observer <- matrix(
+  c("A", "B"),
+  nrow = nSites,
+  ncol = 2,
+  byrow = TRUE
+)
+colnames(observer) <- c(
+  "observer1",
+  "observer2"
+)
+
+library(unmarked)
+umf <- unmarkedFrameMPois(
+  y = y,
+  obsCovs = list(observer = observer),
+  type = "double"
+)
+
+fm <- multinomPois(
+  ~ observer -1 ~ 1,
+  data = umf
+)
+
+fm
+
+coef_estimates <- data.frame(
+  parameter = c("lambda_hat", "pA_hat", "pB_hat"),
+  true_value = c(lambda, p1, p2)
+)
+
+coef_estimates$unmarked <- c(exp(coef(fm)["lambda(Int)"]),
+                             plogis(coef(fm)["p(observerA)"]),
+                             plogis(coef(fm)["p(observerB)"])
+                             )
+
+coef_estimates
+```
+
+Fit the same model in JAGS
+
+```{r JAGS}
+library(jagsUI)
+
+model_string <- "
+model {
+
+  lambda ~ dunif(0,20)
+  pA ~ dunif(0,1)
+  pB ~ dunif(0,1)
+  
+  pi1 <- pA * (1 - pB)
+  pi2 <- (1 - pA) * pB
+  pi3 <- pA * pB
+
+  for (i in 1:nSites) {
+    y[i,1] ~ dpois(lambda * pi1)
+    y[i,2] ~ dpois(lambda * pi2)
+    y[i,3] ~ dpois(lambda * pi2)
+  }
+}
+"
+
+model_file <- tempfile(fileext = ".jags")
+
+writeLines(
+  model_string,
+  con = model_file
+)
+
+jags_data <- list(
+  nSites = nSites,
+  y = y
+)
+
+jags_inits <- function() {
+  list(
+    lambda = runif(1),
+    pA = runif(1),
+    pB = runif(1),
+    N=rowSums(y)+rpois(nrow(y), 2)
+  )
+}
+
+jags_pars <- c("lambda", "pA", "pB")
+
+jags_post <- jags.basic(
+  data = jags_data,
+  inits = jags_inits,
+  parameters.to.save = jags_pars,
+  model.file = model_file,
+  n.chains = 3,
+  n.adapt = 100,
+  n.burnin = 2000,
+  n.iter = 10000,
+  parallel = TRUE
+)
+
+jags_summary <- summary(jags_post)
+
+coef_estimates$JAGS_mean <- jags_summary$statistics[c("lambda", "pA", "pB"), "Mean"]
+coef_estimates$JAGS_lower95 <- jags_summary$quantiles[c("lambda", "pA", "pB"), "2.5%"]
+coef_estimates$JAGS_median <- jags_summary$quantiles[c("lambda", "pA", "pB"), "50%"]
+coef_estimates$JAGS_upper95 <- jags_summary$quantiles[c("lambda", "pA", "pB"), "97.5%"]
+```
+
+
+    
+For both unmarked and JAGS, use the point estimates of $p_1$ and $p_2$ to compute the $\pi$ probabilities.
