@@ -88,7 +88,7 @@ jags.post.samples <- jags.basic(data=jags.data,
                                 n.chains=3,
                                 n.adapt=100, 
                                 n.burnin=0,
-                                n.iter=2000,
+                                n.iter=6000,
                                 parallel=TRUE)
 ```
 
@@ -168,7 +168,7 @@ jags.prior.samples <- jags.basic(data=jags.data2,
                                  n.chains=3,
                                  n.adapt=100,
                                  n.burnin=0,
-                                 n.iter=2000,
+                                 n.iter=6000,
                                  parallel=TRUE)
 summary(jags.prior.samples)
 ```
@@ -195,11 +195,14 @@ lambda.long.prior <- data.frame(
     )
   )
 )
-ggplot(lambda.long.prior, aes(x = lambda)) +
+
+log.lambda.long.prior <- lambda.long.prior
+log.lambda.long.prior$lambda <- log(log.lambda.long.prior$lambda)
+ggplot(log.lambda.long.prior, aes(x = lambda)) +
   geom_histogram() +
   facet_wrap(~forest, ncol = 3) +
   labs(
-    x = "lambda_hat",
+    x = "log(lambda_hat)",
     y = "Frequency"
   ) + 
   geom_vline(
@@ -214,8 +217,8 @@ ggplot(lambda.long.prior, aes(x = lambda)) +
 
 ```{r Comparison Plot}
 lambda.long$distribution <- "Posterior"
-lambda.long.prior$distribution <- "Prior"
-lambda.combined <- rbind(lambda.long, lambda.long.prior)
+log.lambda.long.prior$distribution <- "Prior"
+lambda.combined <- rbind(lambda.long, log.lambda.long.prior)
 
 ggplot(lambda.combined,
        aes(x = lambda, fill = distribution)) +
@@ -225,11 +228,22 @@ ggplot(lambda.combined,
   ) +
   facet_wrap(~ forest, ncol = 3) +
   labs(
-    x = "lambda_hat",
+    x = "Posterior: lambda_hat \n Prior: log(lambda_hat)",
     y = "Frequency",
     fill = "Distribution"
+  ) +
+  geom_vline(
+      data = data.frame(
+        forest = names(lambda.true),
+        lambda = lambda.true
+      ),
+      aes(xintercept = lambda, color = "True value, original scale"),
+      linetype = "solid"
   )
 ```
+Note:
+
+I have showed the posterior $\lambda$ distribution on it's original scale. Due to the relatively much wider prior distribution, I have displayed the prior $\ambda$ distribution on the log-scale, as shown in the horizontal axis label. The vertical line showing the true value of $\lambda$ is on the original scale and thus is only applicable when visually expecting the accuracy of the posterior distribution, not the prior distribution.
 
 
 

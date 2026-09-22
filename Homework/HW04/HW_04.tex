@@ -1,0 +1,551 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\documentclass[
+]{article}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={HW\_04},
+  pdfauthor={Henry Traynor},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{HW\_04}
+\author{Henry Traynor}
+\date{Due: 5:00pm, 15 September}
+
+\begin{document}
+\maketitle
+
+Create a self-contained R script or Rmarkdown/Quarto file to do the
+following:
+
+Using the simulated data, compare the prior and posterior predictive
+distributions of \(\lambda\) for each of the 3 forest types.
+
+Hint: because forest type is categorical (not continuous), you can
+visualize the prior and posterior predictive distributions as histograms
+for each forest type.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{set.seed}\NormalTok{(}\DecValTok{314159}\NormalTok{) }\CommentTok{\# for reproducibility}
+
+\NormalTok{nSites }\OtherTok{\textless{}{-}} \DecValTok{100}
+\NormalTok{nVisits }\OtherTok{\textless{}{-}} \DecValTok{4}
+
+\NormalTok{forest }\OtherTok{\textless{}{-}} \FunctionTok{factor}\NormalTok{(}\FunctionTok{sample}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\StringTok{"Hardwood"}\NormalTok{, }\StringTok{"Mixed"}\NormalTok{, }\StringTok{"Pine"}\NormalTok{), nSites, }\AttributeTok{replace=}\ConstantTok{TRUE}\NormalTok{))}
+\NormalTok{forestMixed }\OtherTok{\textless{}{-}} \FunctionTok{ifelse}\NormalTok{(forest}\SpecialCharTok{==}\StringTok{"Mixed"}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{)        }\DocumentationTok{\#\# Dummy}
+\NormalTok{forestPine }\OtherTok{\textless{}{-}} \FunctionTok{ifelse}\NormalTok{(forest}\SpecialCharTok{==}\StringTok{"Pine"}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{)          }\DocumentationTok{\#\# Dummy}
+\NormalTok{temp }\OtherTok{\textless{}{-}} \FunctionTok{matrix}\NormalTok{(}\FunctionTok{rnorm}\NormalTok{(nSites}\SpecialCharTok{*}\NormalTok{nVisits), }\AttributeTok{nrow=}\NormalTok{nSites, }\AttributeTok{ncol=}\NormalTok{nVisits)}
+
+\CommentTok{\# true coeffs}
+\NormalTok{beta0 }\OtherTok{\textless{}{-}} \DecValTok{0}
+\NormalTok{beta1 }\OtherTok{\textless{}{-}} \SpecialCharTok{{-}}\DecValTok{1}
+\NormalTok{beta2 }\OtherTok{\textless{}{-}} \DecValTok{1}
+\NormalTok{lambda }\OtherTok{\textless{}{-}} \FunctionTok{exp}\NormalTok{(beta0 }\SpecialCharTok{+}\NormalTok{ beta1}\SpecialCharTok{*}\NormalTok{forestMixed }\SpecialCharTok{+}\NormalTok{ beta2}\SpecialCharTok{*}\NormalTok{forestPine)}
+\NormalTok{alpha0 }\OtherTok{\textless{}{-}} \SpecialCharTok{{-}}\DecValTok{2}
+\NormalTok{alpha1 }\OtherTok{\textless{}{-}} \DecValTok{1}
+\NormalTok{p }\OtherTok{\textless{}{-}} \FunctionTok{plogis}\NormalTok{(alpha0 }\SpecialCharTok{+}\NormalTok{ alpha1}\SpecialCharTok{*}\NormalTok{temp)}
+
+\CommentTok{\# true lambda plots}
+\NormalTok{lambda.true }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}
+  \AttributeTok{Hardwood =} \FunctionTok{exp}\NormalTok{(beta0),}
+  \AttributeTok{Mixed =} \FunctionTok{exp}\NormalTok{(beta0 }\SpecialCharTok{+}\NormalTok{ beta1),}
+  \AttributeTok{Pine =} \FunctionTok{exp}\NormalTok{(beta0 }\SpecialCharTok{+}\NormalTok{ beta2)}
+\NormalTok{)}
+\NormalTok{lambda.true}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##  Hardwood     Mixed      Pine 
+## 1.0000000 0.3678794 2.7182818
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# simulate occupancy and detection data}
+\NormalTok{N }\OtherTok{\textless{}{-}} \FunctionTok{rpois}\NormalTok{(nSites, }\AttributeTok{lambda=}\NormalTok{lambda)         }\DocumentationTok{\#\# local abundance }
+\NormalTok{y }\OtherTok{\textless{}{-}} \FunctionTok{matrix}\NormalTok{(}\ConstantTok{NA}\NormalTok{, }\AttributeTok{nrow=}\NormalTok{nSites, }\AttributeTok{ncol=}\NormalTok{nVisits)}
+\ControlFlowTok{for}\NormalTok{(i }\ControlFlowTok{in} \DecValTok{1}\SpecialCharTok{:}\NormalTok{nSites) \{}
+\NormalTok{    y[i,] }\OtherTok{\textless{}{-}} \FunctionTok{rbinom}\NormalTok{(nVisits, }\AttributeTok{size=}\NormalTok{N[i], }\AttributeTok{prob=}\NormalTok{p[i,])}
+\NormalTok{\}}
+
+\CommentTok{\# summary statistics}
+\NormalTok{maxCounts }\OtherTok{\textless{}{-}} \FunctionTok{apply}\NormalTok{(y, }\DecValTok{1}\NormalTok{, max) }
+\FunctionTok{table}\NormalTok{(maxCounts)            }
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## maxCounts
+##  0  1  2  3  4 
+## 61 34  2  2  1
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{naiveOccupancy }\OtherTok{\textless{}{-}} \FunctionTok{sum}\NormalTok{(maxCounts}\SpecialCharTok{\textgreater{}}\DecValTok{0}\NormalTok{)}\SpecialCharTok{/}\NormalTok{nSites}
+\NormalTok{naiveOccupancy }
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 0.39
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{naiveAbund }\OtherTok{\textless{}{-}} \FunctionTok{sum}\NormalTok{(maxCounts)}
+\NormalTok{naiveAbund}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 48
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# prep data in named list}
+\NormalTok{jags.data }\OtherTok{\textless{}{-}} \FunctionTok{list}\NormalTok{(}\AttributeTok{y=}\NormalTok{y,}
+                  \AttributeTok{forestMixed=}\NormalTok{forestMixed,}
+                  \AttributeTok{forestPine=}\NormalTok{forestPine,}
+                  \AttributeTok{nSites=}\NormalTok{nSites, }
+                  \AttributeTok{temp=}\NormalTok{temp,}
+                  \AttributeTok{nOccasions=}\NormalTok{nVisits)}
+\CommentTok{\# initial values for MCMC}
+\NormalTok{jags.inits }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{() \{}
+    \FunctionTok{list}\NormalTok{(}\AttributeTok{beta0=}\FunctionTok{rnorm}\NormalTok{(}\DecValTok{1}\NormalTok{), }\AttributeTok{alpha0=}\FunctionTok{rnorm}\NormalTok{(}\DecValTok{1}\NormalTok{), }\AttributeTok{N=}\NormalTok{maxCounts)}
+\NormalTok{\}}
+\CommentTok{\# parameters to save}
+\NormalTok{jags.pars }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\StringTok{"beta0"}\NormalTok{, }\StringTok{"beta1"}\NormalTok{, }\StringTok{"beta2"}\NormalTok{,}
+               \StringTok{"alpha0"}\NormalTok{, }\StringTok{"alpha1"}\NormalTok{, }\StringTok{"totalAbundance"}\NormalTok{)}
+
+\CommentTok{\# run model}
+\FunctionTok{library}\NormalTok{(jagsUI)}
+\NormalTok{jags.post.samples }\OtherTok{\textless{}{-}} \FunctionTok{jags.basic}\NormalTok{(}\AttributeTok{data=}\NormalTok{jags.data, }
+                                \AttributeTok{inits=}\NormalTok{jags.inits,}
+                                \AttributeTok{parameters.to.save=}\FunctionTok{c}\NormalTok{(jags.pars,}\StringTok{"N"}\NormalTok{), }
+                                \AttributeTok{model.file=}\StringTok{"Nmix{-}model{-}covs.jag"}\NormalTok{,}
+                                \AttributeTok{n.chains=}\DecValTok{3}\NormalTok{,}
+                                \AttributeTok{n.adapt=}\DecValTok{100}\NormalTok{, }
+                                \AttributeTok{n.burnin=}\DecValTok{0}\NormalTok{,}
+                                \AttributeTok{n.iter=}\DecValTok{6000}\NormalTok{,}
+                                \AttributeTok{parallel=}\ConstantTok{TRUE}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Processing function input....... 
+## 
+## Done. 
+##  
+## Beginning parallel processing using 3 cores. Console output will be suppressed.
+## 
+## Parallel processing completed.
+## 
+## MCMC took 0.154 minutes.
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{summary}\NormalTok{(jags.post.samples[,jags.pars])}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Iterations = 101:6100
+## Thinning interval = 1 
+## Number of chains = 3 
+## Sample size per chain = 6000 
+## 
+## 1. Empirical mean and standard deviation for each variable,
+##    plus standard error of the mean:
+## 
+##                   Mean      SD Naive SE Time-series SE
+## beta0          -0.2160  0.2736 0.002039        0.01795
+## beta1          -0.7590  0.4029 0.003003        0.02311
+## beta2           0.8277  0.3097 0.002308        0.01427
+## alpha0         -1.6143  0.3127 0.002330        0.04394
+## alpha1          1.0628  0.1735 0.001293        0.01532
+## totalAbundance 94.2259 20.2886 0.151222        2.70765
+## 
+## 2. Quantiles for each variable:
+## 
+##                   2.5%     25%     50%       75%      97.5%
+## beta0          -0.7423 -0.4023 -0.2243  -0.03539   0.344070
+## beta1          -1.5837 -1.0244 -0.7474  -0.48342   0.005029
+## beta2           0.2328  0.6187  0.8249   1.03222   1.443433
+## alpha0         -2.2454 -1.8118 -1.5926  -1.40132  -1.018052
+## alpha1          0.7235  0.9499  1.0558   1.17456   1.408526
+## totalAbundance 66.0000 80.0000 90.0000 104.00000 145.000000
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{plot}\NormalTok{(jags.post.samples[,}\FunctionTok{paste0}\NormalTok{(}\StringTok{"N["}\NormalTok{, }\DecValTok{1}\SpecialCharTok{:}\DecValTok{2}\NormalTok{, }\StringTok{"]"}\NormalTok{)])}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{HW_04_files/HW_04_files/figure-latex/Summary & Plots-1.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{plot}\NormalTok{(jags.post.samples[,}\FunctionTok{paste0}\NormalTok{(}\StringTok{"N["}\NormalTok{, }\DecValTok{3}\SpecialCharTok{:}\DecValTok{4}\NormalTok{, }\StringTok{"]"}\NormalTok{)])}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{HW_04_files/HW_04_files/figure-latex/Summary & Plots-2.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{plot}\NormalTok{(jags.post.samples[,jags.pars[}\DecValTok{1}\SpecialCharTok{:}\DecValTok{3}\NormalTok{]])}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{HW_04_files/HW_04_files/figure-latex/Summary & Plots-3.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{plot}\NormalTok{(jags.post.samples[,jags.pars[}\DecValTok{4}\SpecialCharTok{:}\DecValTok{5}\NormalTok{]])}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{HW_04_files/HW_04_files/figure-latex/Summary & Plots-4.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# extract beta values}
+\NormalTok{lambda.coef.post }\OtherTok{\textless{}{-}} \FunctionTok{as.matrix}\NormalTok{(jags.post.samples[,}\FunctionTok{c}\NormalTok{(}\StringTok{"beta0"}\NormalTok{,}\StringTok{"beta1"}\NormalTok{, }\StringTok{"beta2"}\NormalTok{)])}
+\FunctionTok{head}\NormalTok{(lambda.coef.post, }\AttributeTok{n=}\DecValTok{4}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##           beta0      beta1     beta2
+## [1,] -0.4837185 -0.7557389 0.3601422
+## [2,] -0.4710857 -0.6743193 0.3341998
+## [3,] -0.3907293 -0.7037765 0.3400097
+## [4,] -0.3746024 -0.7438384 0.4104394
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{n.iter }\OtherTok{\textless{}{-}} \FunctionTok{nrow}\NormalTok{(lambda.coef.post)}
+\CommentTok{\# vector for predictive val}
+\NormalTok{forest.pred }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\FunctionTok{rep}\NormalTok{(}\StringTok{"Hardwood"}\NormalTok{, }\DecValTok{50}\NormalTok{),}
+                 \FunctionTok{rep}\NormalTok{(}\StringTok{"Mixed"}\NormalTok{, }\DecValTok{50}\NormalTok{),}
+                 \FunctionTok{rep}\NormalTok{(}\StringTok{"Pine"}\NormalTok{,}\DecValTok{50}\NormalTok{)}
+\NormalTok{                 )}
+
+\NormalTok{forest.Mixed.pred }\OtherTok{\textless{}{-}} \FunctionTok{ifelse}\NormalTok{(forest.pred}\SpecialCharTok{==}\StringTok{"Mixed"}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{)}
+\NormalTok{forest.Pine.pred }\OtherTok{\textless{}{-}} \FunctionTok{ifelse}\NormalTok{(forest.pred}\SpecialCharTok{==}\StringTok{"Pine"}\NormalTok{, }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{)}
+
+\NormalTok{lambda.post.pred }\OtherTok{\textless{}{-}} \FunctionTok{matrix}\NormalTok{(}\ConstantTok{NA}\NormalTok{, }\AttributeTok{nrow=}\NormalTok{n.iter, }\AttributeTok{ncol=}\FunctionTok{length}\NormalTok{(forest.pred))}
+
+\CommentTok{\# we now use exp() rather than plogis() since lambda is log{-}linear rather than logit{-}linear}
+\ControlFlowTok{for}\NormalTok{(i }\ControlFlowTok{in} \DecValTok{1}\SpecialCharTok{:}\NormalTok{n.iter) \{}
+\NormalTok{    lambda.post.pred[i,] }\OtherTok{\textless{}{-}} \FunctionTok{exp}\NormalTok{(}
+\NormalTok{      lambda.coef.post[i,}\StringTok{"beta0"}\NormalTok{] }\SpecialCharTok{+} 
+\NormalTok{      lambda.coef.post[i,}\StringTok{"beta1"}\NormalTok{] }\SpecialCharTok{*}\NormalTok{ forest.Mixed.pred }\SpecialCharTok{+} 
+\NormalTok{      lambda.coef.post[i,}\StringTok{"beta2"}\NormalTok{] }\SpecialCharTok{*}\NormalTok{ forest.Pine.pred}
+\NormalTok{      )}
+\NormalTok{\}}
+
+\CommentTok{\# plot showing forest type on categorical horiz. axis and lambda on continuous vert. vertical axis}
+\CommentTok{\# pull out values for each forest type}
+\NormalTok{hardwood }\OtherTok{\textless{}{-}} \FunctionTok{as.vector}\NormalTok{(lambda.post.pred[, }\DecValTok{1}\SpecialCharTok{:}\DecValTok{50}\NormalTok{])}
+\NormalTok{mixed    }\OtherTok{\textless{}{-}} \FunctionTok{as.vector}\NormalTok{(lambda.post.pred[, }\DecValTok{51}\SpecialCharTok{:}\DecValTok{100}\NormalTok{])}
+\NormalTok{pine     }\OtherTok{\textless{}{-}} \FunctionTok{as.vector}\NormalTok{(lambda.post.pred[, }\DecValTok{101}\SpecialCharTok{:}\DecValTok{150}\NormalTok{])}
+\CommentTok{\#combine vectors in long form for easy graphing}
+\NormalTok{lambda.long }\OtherTok{\textless{}{-}} \FunctionTok{data.frame}\NormalTok{(}
+  \AttributeTok{lambda =} \FunctionTok{c}\NormalTok{(hardwood, mixed, pine),}
+  \AttributeTok{forest =} \FunctionTok{rep}\NormalTok{(}
+    \FunctionTok{c}\NormalTok{(}\StringTok{"Hardwood"}\NormalTok{, }\StringTok{"Mixed"}\NormalTok{, }\StringTok{"Pine"}\NormalTok{),}
+    \AttributeTok{times =} \FunctionTok{c}\NormalTok{(}\FunctionTok{length}\NormalTok{(hardwood), }\FunctionTok{length}\NormalTok{(mixed), }\FunctionTok{length}\NormalTok{(pine))}
+\NormalTok{  )}
+\NormalTok{)}
+\FunctionTok{library}\NormalTok{(ggplot2)}
+\FunctionTok{ggplot}\NormalTok{(lambda.long, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ lambda)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_histogram}\NormalTok{() }\SpecialCharTok{+}
+  \FunctionTok{facet\_wrap}\NormalTok{(}\SpecialCharTok{\textasciitilde{}}\NormalTok{forest, }\AttributeTok{ncol =} \DecValTok{3}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}
+    \AttributeTok{x =} \StringTok{"lambda\_hat"}\NormalTok{,}
+    \AttributeTok{y =} \StringTok{"Frequency"}
+\NormalTok{  ) }\SpecialCharTok{+} 
+  \FunctionTok{geom\_vline}\NormalTok{(}
+    \AttributeTok{data =} \FunctionTok{data.frame}\NormalTok{(}
+      \AttributeTok{forest =} \FunctionTok{names}\NormalTok{(lambda.true),}
+      \AttributeTok{lambda =}\NormalTok{ lambda.true}
+\NormalTok{    ),}
+    \FunctionTok{aes}\NormalTok{(}\AttributeTok{xintercept =}\NormalTok{ lambda, }\AttributeTok{color =} \StringTok{"True value"}\NormalTok{),}
+    \AttributeTok{linetype =} \StringTok{"solid"}
+\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## `stat_bin()` using `bins = 30`. Pick better value `binwidth`.
+\end{verbatim}
+
+\pandocbounded{\includegraphics[keepaspectratio]{HW_04_files/HW_04_files/figure-latex/Bayesian Prediction-1.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{jags.data2 }\OtherTok{\textless{}{-}}\NormalTok{ jags.data }\CommentTok{\# redefine data}
+\NormalTok{jags.data2}\SpecialCharTok{$}\NormalTok{y[] }\OtherTok{\textless{}{-}} \ConstantTok{NA}     \CommentTok{\# Replace data with missing values}
+
+\CommentTok{\# resample}
+\NormalTok{jags.prior.samples }\OtherTok{\textless{}{-}} \FunctionTok{jags.basic}\NormalTok{(}\AttributeTok{data=}\NormalTok{jags.data2,}
+                                 \AttributeTok{inits=}\NormalTok{jags.inits,}
+                                 \AttributeTok{parameters.to.save=}\NormalTok{jags.pars,}
+                                 \AttributeTok{model.file=}\StringTok{"Nmix{-}model{-}covs.jag"}\NormalTok{,}
+                                 \AttributeTok{n.chains=}\DecValTok{3}\NormalTok{,}
+                                 \AttributeTok{n.adapt=}\DecValTok{100}\NormalTok{,}
+                                 \AttributeTok{n.burnin=}\DecValTok{0}\NormalTok{,}
+                                 \AttributeTok{n.iter=}\DecValTok{6000}\NormalTok{,}
+                                 \AttributeTok{parallel=}\ConstantTok{TRUE}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Processing function input....... 
+## 
+## Done. 
+##  
+## Beginning parallel processing using 3 cores. Console output will be suppressed.
+## 
+## Parallel processing completed.
+## 
+## MCMC took 0.01 minutes.
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{summary}\NormalTok{(jags.prior.samples)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Iterations = 1:6000
+## Thinning interval = 1 
+## Number of chains = 3 
+## Sample size per chain = 6000 
+## 
+## 1. Empirical mean and standard deviation for each variable,
+##    plus standard error of the mean:
+## 
+##                      Mean       SD Naive SE Time-series SE
+## alpha0          -0.012572    1.422  0.01060        0.01060
+## alpha1          -0.003566    1.412  0.01053        0.01029
+## beta0           -0.006604    1.412  0.01052        0.01036
+## beta1           -0.015821    1.435  0.01069        0.01069
+## beta2            0.008797    1.393  0.01039        0.01032
+## totalAbundance 547.307778 2365.565 17.63188       17.63236
+## 
+## 2. Quantiles for each variable:
+## 
+##                  2.5%     25%        50%      75%    97.5%
+## alpha0         -2.779 -0.9815  -0.012361   0.9576    2.766
+## alpha1         -2.785 -0.9442  -0.012058   0.9313    2.789
+## beta0          -2.780 -0.9548  -0.013094   0.9527    2.767
+## beta1          -2.815 -0.9968  -0.009533   0.9507    2.780
+## beta2          -2.753 -0.9247   0.002908   0.9524    2.733
+## totalAbundance  6.000 47.0000 137.000000 410.0000 3386.275
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{lambda.coef.prior }\OtherTok{\textless{}{-}} \FunctionTok{as.matrix}\NormalTok{(jags.prior.samples[,}\FunctionTok{c}\NormalTok{(}\StringTok{"beta0"}\NormalTok{,}\StringTok{"beta1"}\NormalTok{,}\StringTok{"beta2"}\NormalTok{)])}
+\NormalTok{lambda.prior.pred }\OtherTok{\textless{}{-}} \FunctionTok{matrix}\NormalTok{(}\ConstantTok{NA}\NormalTok{, }\AttributeTok{nrow=}\NormalTok{n.iter, }\AttributeTok{ncol=}\FunctionTok{length}\NormalTok{(forest.pred))}
+\ControlFlowTok{for}\NormalTok{(i }\ControlFlowTok{in} \DecValTok{1}\SpecialCharTok{:}\NormalTok{n.iter) \{}
+\NormalTok{    lambda.prior.pred[i,] }\OtherTok{\textless{}{-}} \FunctionTok{exp}\NormalTok{(lambda.coef.prior[i,}\StringTok{"beta0"}\NormalTok{] }\SpecialCharTok{+}\NormalTok{ lambda.coef.prior[i,}\StringTok{"beta1"}\NormalTok{]}\SpecialCharTok{*}\NormalTok{forest.Mixed.pred }\SpecialCharTok{+}\NormalTok{ lambda.coef.prior[i, }\StringTok{"beta2"}\NormalTok{]}\SpecialCharTok{*}\NormalTok{forest.Pine.pred)}
+\NormalTok{\}}
+
+\CommentTok{\# plot showing forest type on categorical horiz. axis and lambda on continuous vert. vertical axis}
+\NormalTok{hardwood.prior }\OtherTok{\textless{}{-}} \FunctionTok{as.vector}\NormalTok{(lambda.prior.pred[, }\DecValTok{1}\SpecialCharTok{:}\DecValTok{50}\NormalTok{])}
+\NormalTok{mixed.prior    }\OtherTok{\textless{}{-}} \FunctionTok{as.vector}\NormalTok{(lambda.prior.pred[, }\DecValTok{51}\SpecialCharTok{:}\DecValTok{100}\NormalTok{])}
+\NormalTok{pine.prior     }\OtherTok{\textless{}{-}} \FunctionTok{as.vector}\NormalTok{(lambda.prior.pred[, }\DecValTok{101}\SpecialCharTok{:}\DecValTok{150}\NormalTok{])}
+\NormalTok{lambda.long.prior }\OtherTok{\textless{}{-}} \FunctionTok{data.frame}\NormalTok{(}
+  \AttributeTok{lambda =} \FunctionTok{c}\NormalTok{(hardwood.prior, mixed.prior, pine.prior),}
+  \AttributeTok{forest =} \FunctionTok{rep}\NormalTok{(}
+    \FunctionTok{c}\NormalTok{(}\StringTok{"Hardwood"}\NormalTok{, }\StringTok{"Mixed"}\NormalTok{, }\StringTok{"Pine"}\NormalTok{),}
+    \AttributeTok{times =} \FunctionTok{c}\NormalTok{(}
+      \FunctionTok{length}\NormalTok{(hardwood.prior),}
+      \FunctionTok{length}\NormalTok{(mixed.prior),}
+      \FunctionTok{length}\NormalTok{(pine.prior)}
+\NormalTok{    )}
+\NormalTok{  )}
+\NormalTok{)}
+
+\NormalTok{log.lambda.long.prior }\OtherTok{\textless{}{-}}\NormalTok{ lambda.long.prior}
+\NormalTok{log.lambda.long.prior}\SpecialCharTok{$}\NormalTok{lambda }\OtherTok{\textless{}{-}} \FunctionTok{log}\NormalTok{(log.lambda.long.prior}\SpecialCharTok{$}\NormalTok{lambda)}
+\FunctionTok{ggplot}\NormalTok{(log.lambda.long.prior, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ lambda)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_histogram}\NormalTok{() }\SpecialCharTok{+}
+  \FunctionTok{facet\_wrap}\NormalTok{(}\SpecialCharTok{\textasciitilde{}}\NormalTok{forest, }\AttributeTok{ncol =} \DecValTok{3}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}
+    \AttributeTok{x =} \StringTok{"log(lambda\_hat)"}\NormalTok{,}
+    \AttributeTok{y =} \StringTok{"Frequency"}
+\NormalTok{  ) }\SpecialCharTok{+} 
+  \FunctionTok{geom\_vline}\NormalTok{(}
+    \AttributeTok{data =} \FunctionTok{data.frame}\NormalTok{(}
+      \AttributeTok{forest =} \FunctionTok{names}\NormalTok{(lambda.true),}
+      \AttributeTok{lambda =}\NormalTok{ lambda.true}
+\NormalTok{    ),}
+    \FunctionTok{aes}\NormalTok{(}\AttributeTok{xintercept =}\NormalTok{ lambda, }\AttributeTok{color =} \StringTok{"True value"}\NormalTok{),}
+    \AttributeTok{linetype =} \StringTok{"solid"}
+\NormalTok{  )}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## `stat_bin()` using `bins = 30`. Pick better value `binwidth`.
+\end{verbatim}
+
+\pandocbounded{\includegraphics[keepaspectratio]{HW_04_files/HW_04_files/figure-latex/Prior Prediction-1.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{lambda.long}\SpecialCharTok{$}\NormalTok{distribution }\OtherTok{\textless{}{-}} \StringTok{"Posterior"}
+\NormalTok{log.lambda.long.prior}\SpecialCharTok{$}\NormalTok{distribution }\OtherTok{\textless{}{-}} \StringTok{"Prior"}
+\NormalTok{lambda.combined }\OtherTok{\textless{}{-}} \FunctionTok{rbind}\NormalTok{(lambda.long, log.lambda.long.prior)}
+
+\FunctionTok{ggplot}\NormalTok{(lambda.combined,}
+       \FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ lambda, }\AttributeTok{fill =}\NormalTok{ distribution)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_histogram}\NormalTok{(}
+    \AttributeTok{position =} \StringTok{"identity"}\NormalTok{,}
+    \AttributeTok{alpha =} \FloatTok{0.5}\NormalTok{,}
+\NormalTok{  ) }\SpecialCharTok{+}
+  \FunctionTok{facet\_wrap}\NormalTok{(}\SpecialCharTok{\textasciitilde{}}\NormalTok{ forest, }\AttributeTok{ncol =} \DecValTok{3}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}
+    \AttributeTok{x =} \StringTok{"Posterior: lambda\_hat }\SpecialCharTok{\textbackslash{}n}\StringTok{ Prior: log(lambda\_hat)"}\NormalTok{,}
+    \AttributeTok{y =} \StringTok{"Frequency"}\NormalTok{,}
+    \AttributeTok{fill =} \StringTok{"Distribution"}
+\NormalTok{  ) }\SpecialCharTok{+}
+  \FunctionTok{geom\_vline}\NormalTok{(}
+      \AttributeTok{data =} \FunctionTok{data.frame}\NormalTok{(}
+        \AttributeTok{forest =} \FunctionTok{names}\NormalTok{(lambda.true),}
+        \AttributeTok{lambda =}\NormalTok{ lambda.true}
+\NormalTok{      ),}
+      \FunctionTok{aes}\NormalTok{(}\AttributeTok{xintercept =}\NormalTok{ lambda, }\AttributeTok{color =} \StringTok{"True value, original scale"}\NormalTok{),}
+      \AttributeTok{linetype =} \StringTok{"solid"}
+\NormalTok{  )}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## `stat_bin()` using `bins = 30`. Pick better value `binwidth`.
+\end{verbatim}
+
+\pandocbounded{\includegraphics[keepaspectratio]{HW_04_files/HW_04_files/figure-latex/Comparison Plot-1.pdf}}
+Note:
+
+I have showed the posterior \(\lambda\) distribution on it's original
+scale. Due to the relatively much wider prior distribution, I have
+displayed the prior \(\ambda\) distribution on the log-scale, as shown
+in the horizontal axis label. The vertical line showing the true value
+of \(\lambda\) is on the original scale and thus is only applicable when
+visually expecting the accuracy of the posterior distribution, not the
+prior distribution.
+
+\end{document}
