@@ -173,7 +173,12 @@ coef_estimates$JAGS_lower95 <- jags_summary$quantiles[c("lambda", "pA", "pB"), "
 coef_estimates$JAGS_median <- jags_summary$quantiles[c("lambda", "pA", "pB"), "50%"]
 coef_estimates$JAGS_upper95 <- jags_summary$quantiles[c("lambda", "pA", "pB"), "97.5%"]
 ```
-
-
     
 For both unmarked and JAGS, use the point estimates of $p_1$ and $p_2$ to compute the $\pi$ probabilities.
+
+```{r pi values}
+pi_estimates <- data.frame(
+  parameter = c("pi1", "pi2", "pi3", "pi4"),
+  
+)
+```
