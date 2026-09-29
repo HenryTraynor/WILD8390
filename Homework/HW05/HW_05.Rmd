@@ -1,5 +1,5 @@
 ---
-title: "HW_04"
+title: "HW_05"
 author: "Henry Traynor"
 date: 'Due: 5:00pm, 29 September'
 output:
@@ -109,7 +109,7 @@ coef_estimates
 
 Fit the same model in JAGS
 
-```{r JAGS}
+```{r, fig.width=15, fig.height=3}
 library(jagsUI)
 
 model_string <- "
@@ -162,8 +162,9 @@ jags_post <- jags.basic(
   n.chains = 3,
   n.adapt = 100,
   n.burnin = 2000,
-  n.iter = 10000,
-  parallel = TRUE
+  n.iter = 15000,
+  parallel = TRUE,
+  n.thin = 10
 )
 
 jags_summary <- summary(jags_post)
@@ -172,6 +173,16 @@ coef_estimates$JAGS_mean <- jags_summary$statistics[c("lambda", "pA", "pB"), "Me
 coef_estimates$JAGS_lower95 <- jags_summary$quantiles[c("lambda", "pA", "pB"), "2.5%"]
 coef_estimates$JAGS_median <- jags_summary$quantiles[c("lambda", "pA", "pB"), "50%"]
 coef_estimates$JAGS_upper95 <- jags_summary$quantiles[c("lambda", "pA", "pB"), "97.5%"]
+
+summary(jags_post[,jags_pars])
+plot(jags_post[,jags_pars[1]])
+plot(jags_post[,jags_pars[2]])
+plot(jags_post[,jags_pars[3]])
+```
+```{r Convergence and other diagnostics}
+library(coda)
+gelman.diag(jags_post)
+data.frame(ESS = effectiveSize(jags_post))
 ```
     
 For both unmarked and JAGS, use the point estimates of $p_1$ and $p_2$ to compute the $\pi$ probabilities.
@@ -179,6 +190,24 @@ For both unmarked and JAGS, use the point estimates of $p_1$ and $p_2$ to comput
 ```{r pi values}
 pi_estimates <- data.frame(
   parameter = c("pi1", "pi2", "pi3", "pi4"),
-  
+  unmarked = c(coef_estimates$unmarked[2]*(1-coef_estimates$unmarked[3]),
+               (1-coef_estimates$unmarked[2])*coef_estimates$unmarked[3],
+               coef_estimates$unmarked[2]*coef_estimates$unmarked[3],
+               (1-coef_estimates$unmarked[2])*(1-coef_estimates$unmarked[3])
+               ),
+  JAGS = c(coef_estimates$JAGS_mean[2]*(1-coef_estimates$JAGS_mean[3]),
+           (1-coef_estimates$JAGS_mean[2])*coef_estimates$JAGS_mean[3],
+           coef_estimates$JAGS_mean[2]*coef_estimates$JAGS_mean[3],
+           (1-coef_estimates$JAGS_mean[2])*(1-coef_estimates$JAGS_mean[3])
+           ),
+  true = c(pi1, pi2, pi3, pi4)
 )
+
+pi_estimates$unmarked_delta <-
+  pi_estimates$unmarked - pi_estimates$true
+
+pi_estimates$JAGS_delta <-
+  pi_estimates$JAGS - pi_estimates$true
+
+pi_estimates
 ```

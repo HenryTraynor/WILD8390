@@ -3,8 +3,8 @@ title: "HW_04"
 author: "Henry Traynor"
 date: 'Due: 5:00pm, 15 September'
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -208,9 +208,9 @@ ggplot(log.lambda.long.prior, aes(x = lambda)) +
   geom_vline(
     data = data.frame(
       forest = names(lambda.true),
-      lambda = lambda.true
+      log_lambda = log(lambda.true)
     ),
-    aes(xintercept = lambda, color = "True value"),
+    aes(xintercept = log_lambda, color = "log(Lambda)"),
     linetype = "solid"
   )
 ```
