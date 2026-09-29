@@ -1,0 +1,251 @@
+---
+title: "HW_06"
+output:
+  pdf_document: default
+  html_document: default
+date: 'Due: 5:00pm, 29 September'
+---
+
+## Assignment
+
+Create a self-contained R script or Rmarkdown file to do the following:
+
+- Fit a distance sampling model with a half-normal detection function and the following covariates to the black-throated blue warbler data (`btbw_data_distsamp.csv`) in `unmarked` and `JAGS`:
+  - Density covariates: `Elevation`, `UTM.N`, `UTM.W`
+  - Detection covariates: `Wind`, `Noise`
+  - Response: `btbw0_20`, `btbw20_40`, `btbw40_60`, `btbw60_80`, `btbw80_100`
+- Using the model fitted in `unmarked`, create two graphs of the predictions: one for density and the other for the scale parameter ($\sigma$).
+
+### Setup
+```{r setup}
+library(dplyr)
+data <- read.csv("btbw_data_distsamp.csv")
+data <- data %>%
+  rename(
+    btbw0_20 = X.0.20.,
+    btbw20_40 = X.20.40.,
+    btbw40_60 = X.40.60.,
+    btbw60_80 = X.60.80.,
+    btbw80_100 = X.80.100.,
+  )
+
+head(data)
+```
+
+### `unmarked`
+```{r unmarked}
+library(unmarked)
+
+# extract covariates and standardize
+covs <- data.frame(Elevation = data$Elevation, 
+                       UTM_N = data$UTM.N, 
+                       UTM_W = data$UTM.W,
+                       Wind = data$Wind, 
+                       Noise = data$Noise
+                       )
+
+covs_standard <- covs %>%
+  mutate(across(where(is.numeric), ~ as.vector(scale(.))))
+
+# extract response var as matrix
+y <- data %>%
+  select(btbw0_20,
+         btbw20_40,
+         btbw40_60,
+         btbw60_80,
+         btbw80_100)
+y <- as.matrix(y)
+
+# 'dist.breaks' for 'unmarkedFrameDS'
+b <- c(0, 20, 40, 60, 80, 100)
+
+
+# fit model in 'unmarked'
+umf <- unmarkedFrameDS(y = y,
+                       siteCovs = covs_standard,
+                       dist.breaks = b,
+                       survey = "point",
+                       unitsIn = "m")
+
+# display summary
+summary(umf)
+
+fm <- distsamp(~Noise+Wind ~ UTM_N+UTM_W+Elevation, umf, keyfun = "halfnorm")
+fm
+```
+
+### `JAGS`
+
+#### State model (Poisson)
+$$\textrm{log}(\lambda_i) = \beta_0+\beta_1 w_{i1}+\beta_2 w_{i2}+\dots$$
+$$N_i \sim \textrm{Poisson}(\lambda_i)$$
+
+#### Observation Model
+$$\textrm{log}(\sigma_i) = \alpha_0 + \alpha_1 w_{i1} + \alpha_2 w_{i3} + \dots$$
+$$\{ y_{i1}, \dots, y_{iK} \} \sim \textrm{Multinomial}(N_i, \pi(x, \sigma_i))$$
+```{r JAGS}
+model_string <- "
+model {
+
+beta0 ~ dnorm(0, 0.1)
+beta1 ~ dnorm(0, 0.1)
+beta2 ~ dnorm(0, 0.1)
+beta3 ~ dnorm(0, 0.1)
+
+alpha0 ~ dnorm(0, 0.1)
+alpha1 ~ dnorm(0, 0.1)
+alpha2 ~ dnorm(0, 0.1)
+
+for(i in 1:nSites) {
+  log(lambda[i]) <- beta0 + beta1*Elevation[i] + beta2*UTM_N[i] + beta3*UTM_W[i]
+  N[i] ~ dpois(lambda[i]*Area)
+  
+  
+  log(sigma[i]) <- alpha0 + alpha1*Noise[i] + alpha2*Wind[i]
+  for(j in 1:nBins) {
+    pbar[i,j] <- (sigma[i]^2 * (1-exp(-b[j+1]^2/(2*sigma[i]^2))) -
+                  sigma[i]^2 * (1-exp(-b[j]^2/(2*sigma[i]^2)))) * 
+                  2*3.141593/area[j]
+    pi[i,j] <- psi[j]*pbar[i,j]
+  }
+  pi[i,nBins+1] <- 1-sum(pi[i,1:nBins]) ## Pr(not detected)
+  n[i] ~ dbin(1-pi[i,nBins+1], N[i])
+  y[i,] ~ dmulti(pi[i,1:nBins]/(1-pi[i,nBins+1]), n[i])
+  ## If N~Pois(lam), then the above is equivalent to:
+  # for(j in 1:nBins) { y[i,j] ~ dpois(lambda[i]*pi[i,j])  }
+}
+
+totalAbundance <- sum(N[1:nSites])
+
+}
+"
+# make tempfile so model string can be referenced without file
+model_file <- tempfile(fileext = ".jags")
+writeLines(model_string,
+           con = model_file
+           )
+
+B <- 100
+Area <- base::pi *B^2/1e4
+nSites <- nrow(y)
+J <- ncol(y)
+b <- seq(0,B, length=J+1)
+area <- base::pi *b^2
+psi <- (area[-1]-area[-(J+1)]) / area[J+1]
+
+jags_data <- list(y=y, 
+                  n=rowSums(y), 
+                  area=diff(area),
+                  b=b,              # Distance break points
+                  Area=Area,  # Area in ha
+                  psi=psi,          # Pr(occuring in bin j)
+                  Elevation=covs_standard$Elevation, 
+                  UTM_N=covs_standard$UTM_N,
+                  UTM_W=covs_standard$UTM_W,
+                  Noise=covs_standard$Noise,
+                  Wind=covs_standard$Wind, 
+                  nSites=nSites, 
+                  nBins=J
+                  )
+
+jags_inits <- function() {
+  list(beta0 = rnorm(1),
+       alpha0 = log(20),
+       N = rowSums(y) + rpois(nrow(y),2)
+       )
+}
+
+jags_pars <- c("beta0",
+                "beta1",
+                "beta2",
+                "beta3",
+                "alpha0",
+                "alpha1",
+                "alpha2",
+                "totalAbundance"
+                )
+
+
+
+library(jagsUI)
+jags_post <- jags.basic(data=jags_data,
+                        inits = jags_inits,
+                        parameters.to.save = jags_pars,
+                        model.file = model_file,
+                        n.chains = 3,
+                        n.adapt = 100,
+                        n.burnin = 1000,
+                        n.iter = 5000,
+                        parallel = TRUE)
+
+round(summary(jags_post)$quantile, digits=3)
+
+plot(jags_post[,jags_pars[1]], main = jags_pars[1])
+plot(jags_post[,jags_pars[2]], main = jags_pars[2])
+plot(jags_post[,jags_pars[3]], main = jags_pars[3])
+plot(jags_post[,jags_pars[4]], main = jags_pars[4])
+plot(jags_post[,jags_pars[5]], main = jags_pars[5])
+plot(jags_post[,jags_pars[6]], main = jags_pars[6])
+plot(jags_post[,jags_pars[7]], main = jags_pars[7])
+plot(jags_post[,jags_pars[8]], main = jags_pars[8])
+```
+### `unmarked` prediction
+
+```{r}
+library(ggplot2)
+
+#density
+pred_data <- data.frame(Elevation = seq(min(fm@data@siteCovs$Elevation),
+                                        max(fm@data@siteCovs$Elevation),
+                                        length.out = 100
+                                        ),
+                        UTM_N = mean(fm@data@siteCovs$UTM_N),
+                        UTM_W = mean(fm@data@siteCovs$UTM_W)
+                        )
+
+pred_density <- predict(
+  fm,
+  type = "state",
+  newdata = pred_data
+)
+
+pred_data$Density <- pred_density$Predicted
+pred_data$lower <- pred_density$lower
+pred_data$upper <- pred_density$upper
+
+ggplot(pred_data, aes(x=Elevation, y=Density)) +
+  geom_ribbon(aes(ymin=lower, ymax=upper), alpha=0.5) +
+  geom_line(linewidth=1) +
+  labs(
+    x = "Elevation",
+    y = "Predicted Density at mean coordinates"
+  ) +
+  ggtitle("Predicted Density")
+
+pred_sigma_data <- data.frame(
+  Noise = seq(min(fm@data@siteCovs$Noise),
+              max(fm@data@siteCovs$Noise),
+              length.out = 100
+              ),
+  Wind = mean(fm@data@siteCovs$Wind)
+)
+
+pred_sigma <- predict(
+  fm,
+  type="det",
+  newdata = pred_sigma_data
+)
+
+pred_sigma_data$sigma <- pred_sigma$Predicted
+pred_sigma_data$lower <- pred_sigma$lower
+pred_sigma_data$upper <- pred_sigma$upper
+
+ggplot(pred_sigma_data, aes(x=Noise, y=sigma)) +
+  geom_ribbon(aes(ymin=lower, ymax=upper), alpha=0.5) +
+  geom_line(linewidth=1) +
+  labs(
+    x = "Noise",
+    y = "Predicted sigma at mean wind"
+  ) +
+  ggtitle("Predicted sigma")
+```
