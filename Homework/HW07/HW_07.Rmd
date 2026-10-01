@@ -1,0 +1,27 @@
+---
+title: "HW_07"
+output:
+  html_document: default
+  pdf_document: default
+date: 'Due: 5:00pm, 6 October'
+---
+
+# Assignment
+
+Create a self-contained R script or Rmarkdown file to do the following:
+
+Import the Canada warbler mark-recapture data `CAWAcaps_2018.csv` and fit the following models in `RMark` and `JAGS`:
+
+* Model $M_0$
+* Model $M_t$
+* Model $M_h$ – Finite mixture
+* Model $M_h$ – Logit-normal (`JAGS` only)
+
+Create a table reporting point estimates and 95% CIs for $N$ for each model fit in `RMark` and `JAGS`. Which model has the lowest AICc (`RMark` only)?
+
+
+## `RMark` Model Fitting
+
+## `JAGS` Model Fitting
+
+## Point Estimates and AICc Values
