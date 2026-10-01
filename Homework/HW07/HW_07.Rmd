@@ -17,10 +17,56 @@ Import the Canada warbler mark-recapture data `CAWAcaps_2018.csv` and fit the fo
 * Model $M_h$ – Finite mixture
 * Model $M_h$ – Logit-normal (`JAGS` only)
 
+For `JAGS`, use $M=800$, but note if the posterior of $N$ pushes up against $M$.
+
 Create a table reporting point estimates and 95% CIs for $N$ for each model fit in `RMark` and `JAGS`. Which model has the lowest AICc (`RMark` only)?
 
+### Setup
+
+```{r}
+library(RMark)
+library(jagsUI)
+
+y <- read.csv("CAWAcaps_2018.csv")
+
+nIndividuals <- nrow(y)
+nOccasions <- ncol(y)
+
+y.ch <- data.frame(ch=apply(y, 1, paste, collapse=""))
+
+head(y.ch)
+```
 
 ## `RMark` Model Fitting
+
+```{r Model M0}
+# capture Pr = recapture Pr
+# thus 'share=TRUE'
+mark_M0 <- mark(
+  data = y.ch,
+  model = "Closed",
+  silent= TRUE,
+  model.parameters = list(p = list(formula=~1, share=TRUE))
+)
+```
+
+```{r Model Mt}
+mark_Mt <- mark(
+  data = y.ch,
+  model = "Closed",
+  silent = TRUE,
+  model.parameters = list(p = list(formula=~time, share=TRUE))
+)
+```
+
+```{r Model Mh: finite mixture}
+mark_Mh_mixture <- mark(
+  data = y.ch,
+  silent = TRUE,
+  model = "HetClosed",
+  model.parameters = list(p=list(formula=~mixture, share=TRUE))
+)
+```
 
 ## `JAGS` Model Fitting
 
