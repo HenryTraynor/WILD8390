@@ -51,6 +51,8 @@ mark_M0 <- mark(
 ```
 
 ```{r Model Mt}
+# unique p for each capture occasion
+# 'formula =~time'
 mark_Mt <- mark(
   data = y.ch,
   model = "Closed",
@@ -60,6 +62,9 @@ mark_Mt <- mark(
 ```
 
 ```{r Model Mh: finite mixture}
+# individual heterogeneity in p
+# assumes a number of groups with different p
+# 'formula=~mixture'
 mark_Mh_mixture <- mark(
   data = y.ch,
   silent = TRUE,
@@ -70,4 +75,54 @@ mark_Mh_mixture <- mark(
 
 ## `JAGS` Model Fitting
 
+Use $M=800$ to add $M-\texttt{nrow(y)}$ extra `0000` captures.
+
+```{r Data Augmentation}
+M <- 10000
+
+y_aug <- matrix(0, M, nOccasions)
+y_aug[1:nrow(y),] <- as.matrix(y)
+```
+
+```{r Model M0}
+model_string_M0 <- "
+model {
+ p ~ dunif(0,1)
+ psi ~ dunif(0,1)
+ 
+ for(i in 1:M) {
+  z[i] ~ dbern(psi)
+  for(j in i:J) {
+    y[i,j] ~ dbern(z[i]*p)
+  }
+ }
+ N <- sum(z)
+}
+"
+
+model_file_M0 <- tempfile(fileext = ".jags")
+writeLines(model_string_M0,
+           con = model_file_M0
+           )
+
+jags_data_M0 <- list(y=y_aug, M=M, J=nOccasions)
+jags_inits_M0 <- function () list(z=rep(1,M), psi=runif(1), p=runif(1))
+jags_pars_M0 <- c("p", "psi", "N")
+
+jags_post_M0 <- jags.basic(
+  data = jags_data_M0,
+  inits = jags_inits_M0,
+  parameters.to.save = jags_pars_M0,
+  model.file = model_file_M0,
+  n.chains = 3,
+  n.adapt = 1000,
+  n.burnin = 0,
+  n.iter = 20000,
+  parallel = TRUE
+)
+```
+
 ## Point Estimates and AICc Values
+
+plot(jags_post_M0)
+
