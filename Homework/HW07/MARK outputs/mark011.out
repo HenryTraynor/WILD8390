@@ -1,0 +1,164 @@
+
+ Program  MARK  - Survival Rate Estimation with Capture-Recapture Data
+ gfortran(dble/PIM2) Vers. 11.2 Nov 2025   1-Oct-2026 13:46:46    Page  001
+  
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ 
+ Welcome to MARK henry on machine LAPTOP-NBJ62L9J in subdirectory
+   "C:\Users\henry\Desktop\WILD8390\Homework\HW07" running file "mark011.inp".
+ This version was compiled by GCC version 15.2.0 using the options: 
+  -cpp -iprefix C:/tdm-gcc-64/mingw64-15-2/bin/../lib/gcc/
+  x86_64-w64-mingw32/15.2.0/ -D_MT -D_REENTRANT -U_REENTRANT -D
+  dbleprecision -m64 -march=x86-64 -mtune=generic -mthreads -O3 -std=f2023
+  -fimplicit-none -ffpe-summary=invalid,zero,overflow,underflow
+  -funroll-loops -fno-unsafe-math-optimizations -frounding-math
+  -fsignaling-nans -fprefetch-loop-arrays -fall-intrinsics -fopenmp
+
+ This problem will use 7 of 8 possible threads.
+ Static thread allocation is used.
+ INPUT --- proc title ;
+
+ For procedure title CPU Time was 0.001 secs and System Time was 0.001 secs.
+ INPUT --- proc chmatrix occasions= 4 groups= 1 etype= HetClosed 
+ INPUT --- Nodes= 101 mixtures = 2 ICMeans  NoHist hist= 11 ;
+ INPUT ---    time interval 1 1 1 ;
+ INPUT ---    glabel(1)=Group 1;
+
+      Number of unique encounter histories read was 11.
+
+      Number of individual covariates read was 0.
+      Time interval lengths are all equal to 1.
+
+      Data type number is 22
+      Data type is Full Likelihhood Heterogeneity pi and p
+
+ For procedure chmatrix CPU Time was 0.001 secs and System Time was 0.001 secs.
+
+Program  MARK  - Survival Rate Estimation with Capture-Recapture Data
+ gfortran(dble/PIM2) Vers. 11.2 Nov 2025   1-Oct-2026 13:46:46    Page  002
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ 
+
+
+ INPUT --- proc estimate link=Parm-Specific NOLOOP varest=2ndPart    ;
+ INPUT --- model={ pi(~1)p(~mixture)f0(~1) };
+ INPUT ---    group=1 pi    rows=1 cols=1 Square ;
+ INPUT ---        1 ;
+ INPUT ---    group=1 p    rows=2 cols=1 Square ;
+ INPUT ---        2 ;
+ INPUT ---        3 ;
+ INPUT ---    group=1 f0    rows=1 cols=1 Square ;
+ INPUT ---        4 ;
+ INPUT ---    design matrix constraints=4 covariates=4;
+ INPUT ---        1 0 0 0;
+ INPUT ---        0 1 0 0;
+ INPUT ---        0 1 1 0;
+ INPUT ---        0 0 0 1;
+ INPUT ---    links=4;
+ INPUT ---       Logit;
+ INPUT ---       Logit;
+ INPUT ---       Logit;
+ INPUT ---       Log;
+ INPUT ---       blabel(1)=pi:(Intercept);
+ INPUT ---       blabel(2)=p:(Intercept);
+ INPUT ---       blabel(3)=p:mixture2;
+ INPUT ---       blabel(4)=f0:(Intercept);
+ INPUT ---       rlabel(1)=pi g1 m1;
+ INPUT ---       rlabel(2)=p g1 t1 m1;
+ INPUT ---       rlabel(3)=p g1 t1 m2;
+ INPUT ---       rlabel(4)=f0 g1 a0 t1;
+   Model is { pi(~1)p(~mixture)f0(~1) }
+
+ Link Function Used is PARM-SPECIFIC
+
+ Variance Estimation Procedure Used is 2ndPart 
+
+ M(t+1):
+     163
+
+
+ -2logL(saturated) = -744.17291    
+ Effective Sample Size = 652
+
+ Number of function evaluations was 41 for 4 parameters.
+ For numerical optimization, CPU Time was 0.047 secs and System Time was 0.047 secs.
+ -2logL { pi(~1)p(~mixture)f0(~1) } = -690.41250    
+ Penalty { pi(~1)p(~mixture)f0(~1) } = 0.0000000     
+ Gradient { pi(~1)p(~mixture)f0(~1) }:
+ -2.18766E-05 -5.45967E-05 -2.37634E-05 -2.58557E-05
+ Maximum ABS(G) { pi(~1)p(~mixture)f0(~1) } =  5.45967E-05
+
+Program  MARK  - Survival Rate Estimation with Capture-Recapture Data
+ gfortran(dble/PIM2) Vers. 11.2 Nov 2025   1-Oct-2026 13:46:46    Page  003
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ 
+ To compute VC matrix, CPU Time was 0.016 secs and System Time was 0.001 secs.
+ S Vector { pi(~1)p(~mixture)f0(~1) }:
+   332.7276      14.39433     0.3224488     0.6933159E-01
+ To invert VC matrix, CPU Time was 0.001 secs and System Time was 0.001 secs.
+ Ratio Threshold = 50.00 Max Gap (2/3) = 44.64 Next Max Gap (1/2) = 23.12
+ Gap Method for Num. of Estimated Parameters { pi(~1)p(~mixture)f0(~1) } = 4          
+ Threshold { pi(~1)p(~mixture)f0(~1) } = 0.1091934E-03           
+ Numerical Threshold Method for Num. of Estimated Parameters { pi(~1)p(~mixture)f0(~1) } = 4          
+ Number of Estimated Parameters { pi(~1)p(~mixture)f0(~1) } = 4          
+ DEVIANCE { pi(~1)p(~mixture)f0(~1) } = 53.760410               
+ DEVIANCE Degrees of Freedom { pi(~1)p(~mixture)f0(~1) } = 7          
+ c-hat { pi(~1)p(~mixture)f0(~1) } = 7.6800586               
+ AIC { pi(~1)p(~mixture)f0(~1) } = -682.41250              
+ AICc { pi(~1)p(~mixture)f0(~1) } = -682.35068              
+ BIC { pi(~1)p(~mixture)f0(~1) } = -664.49232              
+ Pearson Chisquare { pi(~1)p(~mixture)f0(~1) } = 601.40363               
+ Possible Encounter Histories { pi(~1)p(~mixture)f0(~1) } = 15          
+ Pearson Chisquare df { pi(~1)p(~mixture)f0(~1) } = 10          
+ Pearson chat { pi(~1)p(~mixture)f0(~1) } = 60.140363               
+ Sum(Observed/Expected) { pi(~1)p(~mixture)f0(~1) } = 53.654557               
+ s-bar { pi(~1)p(~mixture)f0(~1) } = 2.7610398               
+ Fletcher chat { pi(~1)p(~mixture)f0(~1) } = 15.990355               
+
+
+          PARM-SPECIFIC Link Function Parameters of { pi(~1)p(~mixture)f0(~1) }
+                                                              95% Confidence Interval
+    Parameter                  Beta         Standard Error     Lower           Upper
+ -------------------------  --------------  --------------  --------------  --------------
+    1:pi:(Intercept)        -1.7899691       3.1309461      -7.9266236       4.3466855    
+    2:p:(Intercept)         -1.2358567       1.4150578      -4.0093701       1.5376567    
+    3:p:mixture2            -1.5684454       1.6885659      -4.8780347       1.7411439    
+    4:f0:(Intercept)         6.0818195       1.7148518       2.7207099       9.4429291    
+
+
+                 Real Function Parameters of { pi(~1)p(~mixture)f0(~1) }
+                                                               95% Confidence Interval
+     Parameter                Estimate       Standard Error     Lower           Upper
+ --------------------------  --------------  --------------  --------------  --------------
+     1:pi g1 m1               0.1430765       0.3838716       0.3608730E-03   0.9872159       
+     2:p g1 t1 m1             0.2251580       0.2468737       0.0178215       0.8231238       
+     3:p g1 t1 m2             0.0570921       0.1433040       0.3280955E-03   0.9178339       
+     4:f0 g1 a0 t1            437.82510       750.80516       44.104318       4346.3050       
+
+Program  MARK  - Survival Rate Estimation with Capture-Recapture Data
+ gfortran(dble/PIM2) Vers. 11.2 Nov 2025   1-Oct-2026 13:46:46    Page  004
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ 
+                     Estimates of Derived Parameters
+
+           Population Estimates of { pi(~1)p(~mixture)f0(~1) }
+                                                95% Confidence Interval
+ Grp. Sess.     N-hat        Standard Error      Lower           Upper
+ ---- -----  --------------  --------------  --------------  --------------
+   1     1    600.82510       750.80516       207.10432       4509.3050    
+
+ To compute parameter estimates, CPU Time was 0.001 secs and System Time was 0.015 secs.
+
+ For procedure estimate CPU Time was 0.062 secs and System Time was 0.062 secs.
+ INPUT --- proc stop;
+
+ For this job, CPU Time in mins was 0.002 and System Time in mins was 0.002.
+
+     Time Start = 13:46:46.326   Time End = 13:46:46.428
+
+ Wall Clock Time in mins for this job was 0.001.
+
+ Maximum of 22 words used.
+
+
+          E X E C U T I O N   S U C C E S S F U L
