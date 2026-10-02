@@ -1,8 +1,8 @@
 ---
 title: "HW_07"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 date: 'Due: 5:00pm, 6 October'
 ---
 
@@ -31,6 +31,7 @@ y <- read.csv("CAWAcaps_2018.csv")
 
 nIndividuals <- nrow(y)
 nOccasions <- ncol(y)
+J <- nOccasions
 
 y.ch <- data.frame(ch=apply(y, 1, paste, collapse=""))
 
@@ -39,18 +40,18 @@ head(y.ch)
 
 ## `RMark` Model Fitting
 
-```{r Model M0}
+```{r Model M0-Mark}
 # capture Pr = recapture Pr
 # thus 'share=TRUE'
 mark_M0 <- mark(
   data = y.ch,
   model = "Closed",
-  silent= TRUE,
+  silent= FALSE,
   model.parameters = list(p = list(formula=~1, share=TRUE))
 )
 ```
 
-```{r Model Mt}
+```{r Model Mt-Mark}
 # unique p for each capture occasion
 # 'formula =~time'
 mark_Mt <- mark(
@@ -61,7 +62,7 @@ mark_Mt <- mark(
 )
 ```
 
-```{r Model Mh: finite mixture}
+```{r Model Mh- finite mixture:Mark}
 # individual heterogeneity in p
 # assumes a number of groups with different p
 # 'formula=~mixture'
@@ -78,25 +79,28 @@ mark_Mh_mixture <- mark(
 Use $M=800$ to add $M-\texttt{nrow(y)}$ extra `0000` captures.
 
 ```{r Data Augmentation}
-M <- 10000
+M <- 800
 
 y_aug <- matrix(0, M, nOccasions)
 y_aug[1:nrow(y),] <- as.matrix(y)
 ```
 
-```{r Model M0}
+```{r Model M0-JAGS}
 model_string_M0 <- "
 model {
- p ~ dunif(0,1)
- psi ~ dunif(0,1)
- 
- for(i in 1:M) {
-  z[i] ~ dbern(psi)
-  for(j in i:J) {
-    y[i,j] ~ dbern(z[i]*p)
+
+p ~ dunif(0,1)             ## Capture probability
+psi ~ dunif(0,1)           ## Data augmentation parameter
+
+for(i in 1:M) {
+  z[i] ~ dbern(psi)        ## DA indicator
+  for(j in 1:J) {
+    y[i,j] ~ dbern(z[i]*p) ## Model for the capture histories
   }
- }
- N <- sum(z)
+}
+
+N <- sum(z)                ## Abundance
+
 }
 "
 
@@ -117,12 +121,327 @@ jags_post_M0 <- jags.basic(
   n.chains = 3,
   n.adapt = 1000,
   n.burnin = 0,
-  n.iter = 20000,
+  n.iter = 2000,
   parallel = TRUE
 )
+
+plot(jags_post_M0)
+```
+
+```{r Model Mt - JAGS}
+model_string_Mt <- "
+model {
+p1 ~ dunif(0,1)
+p2 ~ dunif(0,1)
+p3 ~ dunif(0,1)
+p4 ~ dunif(0,1)
+psi ~ dunif(0,1)
+
+p <- c(p1, p2, p3, p4)
+
+for(i in 1:M) {
+  z[i] ~ dbern(psi)
+  for(j in 1:J) {
+    y[i,j] ~ dbern(z[i]*p[j])
+  }
+}
+N <- sum(z)
+}
+"
+
+model_file_Mt <- tempfile(fileext = ".jags")
+writeLines(model_string_Mt,
+           con = model_file_Mt
+           )
+
+jags_data_Mt <- list(y=y_aug, M=M, J=nOccasions)
+jags_inits_Mt <- function () list(z=rep(1,M),
+                                  psi=runif(1),
+                                  p1=runif(1),
+                                  p2=runif(1),
+                                  p3=runif(1),
+                                  p4=runif(1)
+                                  )
+jags_pars_Mt <- c("p1","p2","p3","p4", "psi", "N")
+
+jags_post_Mt <- jags.basic(
+  data = jags_data_Mt,
+  inits = jags_inits_Mt,
+  parameters.to.save = jags_pars_Mt,
+  model.file = model_file_Mt,
+  n.chains = 3,
+  n.adapt = 1000,
+  n.burnin = 0,
+  n.iter = 2000,
+  parallel = TRUE
+)
+
+# call plots like this to avoid figure margin errors
+plot(jags_post_Mt[,jags_pars_Mt[1]], main = jags_pars_Mt[1])
+plot(jags_post_Mt[,jags_pars_Mt[2]], main = jags_pars_Mt[2])
+plot(jags_post_Mt[,jags_pars_Mt[3]], main = jags_pars_Mt[3])
+plot(jags_post_Mt[,jags_pars_Mt[4]], main = jags_pars_Mt[4])
+plot(jags_post_Mt[,jags_pars_Mt[5]], main = jags_pars_Mt[5])
+plot(jags_post_Mt[,jags_pars_Mt[6]], main = jags_pars_Mt[6])
+
+```
+
+
+Did this one not realizing it wasn't required. But leaving it here for my own notes.
+
+```{r Model Mb-JAGS}
+model_string_Mb <- "
+model {
+p ~ dunif(0, 1)     ## Capture prob
+c ~ dunif(0, 1)     ## Recapture prob
+
+psi ~ dunif(0,1)    ## Data augmentation parameter
+
+for(i in 1:M) {     
+  z[i] ~ dbern(psi) ## DA indicator
+  for(j in 1:J) {
+    pc[i,j] <- ifelse(prevcap[i,j]==0, p, c) ## First cap or recap?
+    y[i,j] ~ dbern(z[i]*pc[i,j])
+  }
+}
+
+N <- sum(z)
+}
+"
+model_file_Mb <- tempfile(fileext = ".jags")
+writeLines(model_string_Mb,
+           con = model_file_Mb
+           )
+
+jags_data_Mb <- jags_data_M0
+
+prevcap_aug <- matrix(FALSE, M, J)
+for(i in 1:M) {
+  for(j in 2:J) {
+    prevcap_aug[i,j] <- any(y_aug[i,1:(j-1)]>0)
+  }
+}
+
+jags_data_Mb$prevcap <- ifelse(prevcap_aug, 1, 0)
+jags_inits_Mb <- function () {
+  list(z=rep(1,M),psi=runif(1), p=runif(1), c=runif(1)) 
+}
+
+
+jags_pars_Mb <- c("p", "c", "psi", "N")
+
+jags_post_Mb <- jags.basic(
+  data = jags_data_Mb,
+  inits = jags_inits_Mb,
+  parameters.to.save = jags_pars_Mb,
+  model.file = model_file_Mb,
+  n.chains = 3,
+  n.adapt = 1000,
+  n.burnin = 0,
+  n.iter = 2000,
+  parallel = TRUE
+)
+
+plot(jags_post_Mb)
+```
+
+```{r Model Mh- finite mixture-JAGS}
+model_string_Mh_finite <- "
+model {
+
+p1 ~ dunif(0, 1)     ## Capture prob, group 1
+p2 ~ dunif(0, 1)     ## Capture prob, group 2
+mixprob ~ dunif(0,1) ## Finite mixture prob
+psi ~ dunif(0,1)     ## Data augmentation parameter
+
+for(i in 1:M) {     
+  z[i] ~ dbern(psi)  ## DA indicator
+  group[i] ~ dbern(mixprob)           ## Group 1 or 2?
+  p[i] <- ifelse(group[i]==0, p1, p2) ## p depends on group
+  for(j in 1:J) {
+    y[i,j] ~ dbern(z[i]*p[i])
+  }
+}
+N <- sum(z)
+}
+"
+
+model_file_Mh_finite <- tempfile(fileext = ".jags")
+writeLines(model_string_Mh_finite,
+           con = model_file_Mh_finite
+           )
+
+jags_data_Mh_finite <- list(y=y_aug, M=M, J=nOccasions)
+jags_inits_Mh_finite <- function () list(z=rep(1,M),
+                                         psi=runif(1),
+                                         p1=runif(1),
+                                         p2=runif(1),
+                                         mixprob=runif(1)
+                                         )
+jags_pars_Mh_finite <- c("p1","p2","mixprob", "psi", "N")
+
+jags_post_Mh_finite <- jags.basic(
+  data = jags_data_Mh_finite,
+  inits = jags_inits_Mh_finite,
+  parameters.to.save = jags_pars_Mh_finite,
+  model.file = model_file_Mh_finite,
+  n.chains = 3,
+  n.adapt = 1000,
+  n.burnin = 0,
+  n.iter = 2000,
+  parallel = TRUE
+)
+
+plot(jags_post_Mh_finite)
+```
+
+```{r Model Mh - logit normal}
+model_string_Mh_logit <- "
+model {
+
+lp.mean ~ dnorm(0,0.1)   ## Mean of logit(p)
+lp.var ~ dexp(1)         ## Variance of logit(p)
+psi ~ dunif(0,1)         ## Data augmentation parameter
+
+for(i in 1:M) {     
+  z[i] ~ dbern(psi)      ## DA indicator
+  lp[i] ~ dnorm(lp.mean, 1/lp.var) ## Random effect, p on logit
+  p[i] <- ilogit(lp[i])  ## Capture prob for individual i
+  for(j in 1:J) {
+    y[i,j] ~ dbern(z[i]*p[i])
+  }
+}
+
+N <- sum(z)
+
+}
+"
+
+model_file_Mh_logit <- tempfile(fileext = ".jags")
+writeLines(model_string_Mh_logit,
+           con = model_file_Mh_logit
+           )
+
+jags_data_Mh_logit <- list(y=y_aug, M=M, J=nOccasions)
+jags_inits_Mh_logit <- function () list(z=rep(1,M),
+                                        psi=runif(1),
+                                        lp.mean=runif(1),
+                                        lp.var=runif(1)
+                                        )
+jags_pars_Mh_logit <- c("lp.mean","lp.var", "psi", "N")
+
+jags_post_Mh_logit <- jags.basic(
+  data = jags_data_Mh_logit,
+  inits = jags_inits_Mh_logit,
+  parameters.to.save = jags_pars_Mh_logit,
+  model.file = model_file_Mh_logit,
+  n.chains = 3,
+  n.adapt = 1000,
+  n.burnin = 0,
+  n.iter = 2000,
+  parallel = TRUE
+)
+
+plot(jags_post_Mh_logit)
 ```
 
 ## Point Estimates and AICc Values
 
-plot(jags_post_M0)
+```{r Mark Estimates}
+mark_fits <- list(mark_M0,
+                  mark_Mt,
+                  mark_Mh_mixture
+                  )
 
+mark_estimates <- data.frame(
+  Model = c("M0",
+            "Mt",
+            "Mh_finite"),
+  N_Estimate = vector("numeric", length = 3),
+  N_Upper = vector("numeric", length = 3),
+  N_Lower = vector("numeric", length = 3),
+  AICc = vector("numeric", length = 3)
+)
+
+for(i in 1:length(mark_fits)) {
+  mark_estimates$N_Estimate[i] <- mark_fits[[i]]$results$derived$'N Population Size'$estimate
+  mark_estimates$N_Upper[i] <- mark_fits[[i]]$results$derived$'N Population Size'$ucl
+  mark_estimates$N_Lower[i] <- mark_fits[[i]]$results$derived$'N Population Size'$lcl
+  mark_estimates$AICc[i] <- mark_fits[[i]]$results$AICc
+}
+```
+
+```{r JAGS Estimates}
+JAGS_posts <- list(
+  jags_post_M0,
+  jags_post_Mt,
+  jags_post_Mh_finite,
+  jags_post_Mh_logit
+)
+
+
+JAGS_estimates <- data.frame(
+  Model = c("M0", "Mt", "Mh_finite", "Mh_logit"),
+  N_Estimate = vector("numeric", length = 4),
+  N_Upper = vector("numeric", length = 4),
+  N_Lower = vector("numeric", length = 4)
+)
+
+for(i in 1:length(JAGS_posts)) {
+  j_summary <- summary(JAGS_posts[[i]])
+  JAGS_estimates$N_Estimate[i] <- j_summary$statistics["N","Mean"]
+  JAGS_estimates$N_Upper[i] <- j_summary$quantiles["N","97.5%"]
+  JAGS_estimates$N_Lower[i] <- j_summary$quantiles["N","2.5%"]
+}
+```
+
+```{r Figures}
+library(ggplot2)
+library(gridExtra)
+library(ggbreak)
+mark_plot <- ggplot(data = mark_estimates, aes(x=Model, y=N_Estimate)) +
+  geom_col() +
+  geom_errorbar(
+    aes(ymin = N_Lower, ymax = N_Upper),
+    width = 0.2
+  ) +
+  labs(
+    x = "Model",
+    y = "Estimated population size"
+  ) +
+  scale_y_break(c(750,4000), ticklabels = c(4000, 4500))
+
+JAGS_plot <- ggplot(data = JAGS_estimates, aes(x=Model, y=N_Estimate)) +
+  geom_col() +
+  geom_errorbar(
+    aes(ymin = N_Lower, ymax = N_Upper),
+    width = 0.2
+  ) +
+  labs(
+    x = "Model",
+    y = "Estimated population size"
+  )
+
+grid.arrange(mark_plot, JAGS_plot)
+
+```
+
+```{r Table and AICc}
+library(dplyr)
+
+mark <- mark_estimates %>%
+  mutate(MARK = sprintf("%.1f (%.1f–%.1f)", N_Estimate, N_Lower, N_Upper)) %>%
+  select(Model, MARK, AICc)
+
+jags <- JAGS_estimates %>%
+  mutate(JAGS = sprintf("%.1f (%.1f–%.1f)", N_Estimate, N_Lower, N_Upper)) %>%
+  select(Model, JAGS)
+
+results_table <- full_join(mark, jags, by = "Model") %>%
+  select(Model, MARK, JAGS, AICc)
+
+results_table
+
+```
+
+The time-varying capture probability model ($M_t$) has the lowest AICc based on MARK outputs.
