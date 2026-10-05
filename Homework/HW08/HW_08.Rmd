@@ -1,0 +1,16 @@
+---
+title: "HW_07"
+output:
+  pdf_document: default
+  html_document: default
+date: 'Due: 5:00pm, 13 October'
+---
+
+# Assignment
+
+Create a self-contained R script or Rmarkdown file to do the following:
+
+Import the bear data formatted for `secr` and fit the null model and a model where $g_0$ varies among the 8 occasions. Use `secr` to determine what an appropriate buffer should be.
+
+Import the bear data formatted for `JAGS` (using the command `load("jags_bear_data.gzip")`) and tabulate the capture frequencies and the number of spatial recapture. Fit the model with occasion-specific $g_0$ in `JAGS`, and compare estimates and 95% CIs for $g_0$, $\sigma$, $E[N]$ and $N$ with the results from `secr`.
+
