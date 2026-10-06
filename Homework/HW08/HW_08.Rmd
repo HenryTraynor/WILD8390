@@ -14,3 +14,13 @@ Import the bear data formatted for `secr` and fit the null model and a model whe
 
 Import the bear data formatted for `JAGS` (using the command `load("jags_bear_data.gzip")`) and tabulate the capture frequencies and the number of spatial recapture. Fit the model with occasion-specific $g_0$ in `JAGS`, and compare estimates and 95% CIs for $g_0$, $\sigma$, $E[N]$ and $N$ with the results from `secr`.
 
+```{r setup}
+library(secr)
+library(jagsUI)
+
+sch <- read.capthist(captfile="encounter_data_file.csv",
+                     trapfile="trap_data_file.csv",
+                     detector="proximity", fmt="trapID")
+summary(sch)
+plot(sch)
+```
