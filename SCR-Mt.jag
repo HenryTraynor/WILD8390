@@ -1,0 +1,35 @@
+
+model {
+  sigma ~ dunif(1, 2000)
+  psi ~ dunif(0, 1)
+
+  # Occasion-specific baseline capture probabilities
+  for(k in 1:K) {
+    g0[k] ~ dunif(0, 1)
+  }
+
+  for(i in 1:M) {
+    s[i,1] ~ dunif(xlim[1], xlim[2])
+    s[i,2] ~ dunif(ylim[1], ylim[2])
+
+    z[i] ~ dbern(psi)
+
+    for(j in 1:J) {
+      dist[i,j] <- sqrt(
+        (s[i,1] - x[j,1])^2 +
+        (s[i,2] - x[j,2])^2
+      )
+
+      for(k in 1:K) {
+        p[i,j,k] <- g0[k] *
+                    exp(-dist[i,j]^2 / (2*sigma^2))
+
+        y[i,j,k] ~ dbern(z[i] * p[i,j,k])
+      }
+    }
+  }
+
+  EN <- M * psi
+  N <- sum(z)
+}
+

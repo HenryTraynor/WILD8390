@@ -1,0 +1,67 @@
+
+model {
+  # Time-varying baseline detection
+  for(k in 1:K) {
+    g0[k] ~ dunif(0, 1)
+  }
+
+  sigma ~ dunif(1, 2000)
+  psi ~ dunif(0, 1)
+
+  for(i in 1:M) {
+    s[i,1] ~ dunif(xlim[1], xlim[2])
+    s[i,2] ~ dunif(ylim[1], ylim[2])
+
+    z[i] ~ dbern(psi)
+
+    for(j in 1:J) {
+      dist[i,j] <- sqrt(
+        pow(s[i,1] - x[j,1], 2) +
+        pow(s[i,2] - x[j,2], 2)
+      )
+
+      for(k in 1:K) {
+        p[i,j,k] <- g0[k] *
+          exp(-pow(dist[i,j], 2) / (2 * pow(sigma, 2)))
+      }
+    }
+  }
+
+  # Likelihood for observed bears
+  for(i in 1:n) {
+    for(j in 1:J) {
+      for(k in 1:K) {
+        y[i,j,k] ~ dbern(p[i,j,k])
+      }
+    }
+  }
+
+  # Probability of no captures at each occasion
+  for(i in (n+1):M) {
+    for(k in 1:K) {
+      prodTrap[i,1,k] <- 1 - p[i,1,k]
+
+      for(j in 2:J) {
+        prodTrap[i,j,k] <-
+          prodTrap[i,j-1,k] * (1 - p[i,j,k])
+      }
+
+      PrNoCapOcc[i,k] <- prodTrap[i,J,k]
+    }
+
+    PrNoCap[i,1] <- PrNoCapOcc[i,1]
+
+    for(k in 2:K) {
+      PrNoCap[i,k] <-
+        PrNoCap[i,k-1] * PrNoCapOcc[i,k]
+    }
+
+    PrAtLeastOneCap[i] <- 1 - PrNoCap[i,K]
+
+    zero[i] ~ dbern(PrAtLeastOneCap[i] * z[i])
+  }
+
+  EN <- M * psi
+  N <- sum(z)
+}
+

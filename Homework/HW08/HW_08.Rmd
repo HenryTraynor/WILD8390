@@ -135,90 +135,161 @@ table(n_locations)
 ```
 
 ```{r}
-M <- 100 # population cap
-J <- length(dimnames(caps.2016)[[2]]) # nTraps
-K <- length(dimnames(caps.2016)[[3]]) # nOccasions
-
-caps_aug <- array(0, c(M, J, K))
-caps_aug[1:nrow(caps.2016),,] <- caps.2016
-
-jags_data <- list(
-  y=caps_aug,
-  M=M,
-  J=J,
-  K=K,
-  x=traps,
-  xlim=c(min(traps[,1])-1000,max(traps[,1])+1000),
-  ylim=c(min(traps[,2])-1000,max(traps[,2])+1000)
-)
-
-jags_inits <- function() {
-  si <- cbind(runif(M, min(traps[,1]), max(traps[,1])),
-              runif(M, min(traps[,2]), max(traps[,2])))
-
-  for(i in 1:nrow(caps.2016)) {
-    traps_with_dets_i <- rowSums(caps.2016[i,,] > 0) > 0
-
-    si[i,] <- colMeans(
-      traps[traps_with_dets_i, , drop = FALSE]
-    )
+model_string_Mt_faster <- "
+model {
+  # Time-varying baseline detection
+  for(k in 1:K) {
+    g0[k] ~ dunif(0, 1)
   }
 
+  sigma ~ dunif(1, 2000)
+  psi ~ dunif(0, 1)
+
+  for(i in 1:M) {
+    s[i,1] ~ dunif(xlim[1], xlim[2])
+    s[i,2] ~ dunif(ylim[1], ylim[2])
+
+    z[i] ~ dbern(psi)
+
+    for(j in 1:J) {
+      dist[i,j] <- sqrt(
+        pow(s[i,1] - x[j,1], 2) +
+        pow(s[i,2] - x[j,2], 2)
+      )
+
+      for(k in 1:K) {
+        p[i,j,k] <- g0[k] *
+          exp(-pow(dist[i,j], 2) / (2 * pow(sigma, 2)))
+      }
+    }
+  }
+
+  # Likelihood for observed bears
+  for(i in 1:n) {
+    for(j in 1:J) {
+      for(k in 1:K) {
+        y[i,j,k] ~ dbern(p[i,j,k])
+      }
+    }
+  }
+
+  # Probability of no captures at each occasion
+  for(i in (n+1):M) {
+    for(k in 1:K) {
+      prodTrap[i,1,k] <- 1 - p[i,1,k]
+
+      for(j in 2:J) {
+        prodTrap[i,j,k] <-
+          prodTrap[i,j-1,k] * (1 - p[i,j,k])
+      }
+
+      PrNoCapOcc[i,k] <- prodTrap[i,J,k]
+    }
+
+    PrNoCap[i,1] <- PrNoCapOcc[i,1]
+
+    for(k in 2:K) {
+      PrNoCap[i,k] <-
+        PrNoCap[i,k-1] * PrNoCapOcc[i,k]
+    }
+
+    PrAtLeastOneCap[i] <- 1 - PrNoCap[i,K]
+
+    zero[i] ~ dbern(PrAtLeastOneCap[i] * z[i])
+  }
+
+  EN <- M * psi
+  N <- sum(z)
+}
+"
+
+M <- 200
+J <- dim(caps.2016)[2]
+K <- dim(caps.2016)[3]
+n <- dim(caps.2016)[1]
+
+xlim <- range(traps[, 1]) + c(-1000, 1000)
+ylim <- range(traps[, 2]) + c(-1000, 1000)
+
+jags_data_Mt_faster <- list(
+  y = caps.2016,
+  n = n,
+  M = M,
+  J = J,
+  K = K,
+  zero = rep(0, M),
+  x = traps,
+  xlim = xlim,
+  ylim = ylim
+)
+
+
+jags_inits_Mt_faster <- function() {
+  si <- cbind(
+    runif(M, xlim[1], xlim[2]),
+    runif(M, ylim[1], ylim[2])
+  )
+  
+  for (i in seq_len(n)) {
+    detected_traps <- which(
+      rowSums(caps.2016[i, , ] > 0) > 0
+    )
+    
+    if (length(detected_traps) > 0) {
+      si[i, ] <- colMeans(traps[detected_traps, , drop = FALSE])
+    }
+  }
+  
   list(
-    z = rep(1, M),
-    psi = runif(1),
+    z = c(rep(NA, n), rep(0, M-n)),
+    psi = runif(1, 0.5, 0.9),
     s = si,
-    g = rep(runif(1, 0.1, 0.9), K),
+    g0 = runif(K, 0.1, 0.9),
     sigma = runif(1, 100, 500)
   )
 }
 
-jags_pars <- c("g", "sigma", "EN", "N")
-```
+writeLines(
+  model_string_Mt_faster,
+  "SCR-Mt-faster.jag"
+)
 
-```{r}
-model_string_Mt <- "
-model {
-for(i in 1:K) {
-  g[i] ~ dunif(0,1)
-}
-sigma ~ dunif(1, 2000)  
-psi ~ dunif(0, 1)      
+jags_pars_Mt_faster <- c(
+  "g0", "sigma", "psi", "EN", "N"
+)
 
-for(i in 1:M) {
-  s[i,1] ~ dunif(xlim[1], xlim[2]) 
-  s[i,2] ~ dunif(ylim[1], ylim[2]) 
-  z[i] ~ dbern(psi)               
-  for(j in 1:J) {
-    dist[i,j] <- sqrt((s[i,1]-x[j,1])^2 + (s[i,2]-x[j,2])^2)
-    for(k in 1:K) {
-      p[i,j,k] <- g[k]*exp(-dist[i,j]^2/(2*sigma^2))
-      y[i,j,k] ~ dbern(z[i]*p[i,j,k])
-    }
-  }
-}
-
-EN <- M*psi  
-N <- sum(z) 
-}
-"
-
-model_file_Mt <- tempfile(fileext = ".jags")
-writeLines(model_string_Mt,
-           con = model_file_Mt
-           )
-
-jags_post <- jags.basic(
-  data=jags_data,
-  inits=jags_inits,
-  parameters.to.save = jags_pars,
-  model.file = model_file_Mt,
+jags_post_Mt_faster <- jags.basic(
+  data = jags_data_Mt_faster,
+  inits = jags_inits_Mt_faster,
+  parameters.to.save = jags_pars_Mt_faster,
+  model.file = "SCR-Mt-faster.jag",
   n.chains = 3,
   n.adapt = 100,
   n.burnin = 0,
   n.iter = 2000,
-  parallel = TRUE
+  parallel = TRUE,
+  verbose = TRUE
 )
+
+
+plot(jags_post_Mt_faster)
+```
+
+```{r}
+jags_summary <- summary(jags_post_Mt_faster)
+
+jags_estimates <- data.frame(
+  parameter = c("sigma", "EN", "N"),
+  mean = vector("numeric", length=3),
+  upper = vector("numeric", length=3),
+  lower = vector("numeric", length=3)
+)
+
+for(i in 1:nrow(jags_estimates)) {
+  jags_estimates$mean[i] <- jags_summary$statistics[jags_estimates$parameter[i],"Mean"]
+  jags_estimates$upper[i] <- jags_summary$quantiles[jags_estimates$parameter[i],"97.5%"]
+  jags_estimates$lower[i] <- jags_summary$quantiles[jags_estimates$parameter[i],"2.5%"]
+}
 ```
 
 
