@@ -145,6 +145,7 @@ model {
   sigma ~ dunif(1, 2000)
   psi ~ dunif(0, 1)
 
+  
   for(i in 1:M) {
     s[i,1] ~ dunif(xlim[1], xlim[2])
     s[i,2] ~ dunif(ylim[1], ylim[2])
@@ -152,17 +153,22 @@ model {
     z[i] ~ dbern(psi)
 
     for(j in 1:J) {
-      dist[i,j] <- sqrt(
+
+      # Squared distance: no square root required
+      d2[i,j] <-
         pow(s[i,1] - x[j,1], 2) +
         pow(s[i,2] - x[j,2], 2)
-      )
+
+      # Calculate spatial component once per bear-trap pair
+      kernel[i,j] <-
+        exp(-d2[i,j] / (2 * pow(sigma, 2)))
 
       for(k in 1:K) {
-        p[i,j,k] <- g0[k] *
-          exp(-pow(dist[i,j], 2) / (2 * pow(sigma, 2)))
+        p[i,j,k] <- g0[k] * kernel[i,j]
       }
     }
   }
+
 
   # Likelihood for observed bears
   for(i in 1:n) {
