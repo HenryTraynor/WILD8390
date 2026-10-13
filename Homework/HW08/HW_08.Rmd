@@ -18,9 +18,210 @@ Import the bear data formatted for `JAGS` (using the command `load("jags_bear_da
 library(secr)
 library(jagsUI)
 
-sch <- read.capthist(captfile="encounter_data_file.csv",
-                     trapfile="trap_data_file.csv",
+sch <- read.capthist(captfile="secr_bear_encounter_data_file.csv",
+                     trapfile="secr_bear_trap_data_file.csv",
                      detector="proximity", fmt="trapID")
 summary(sch)
 plot(sch)
 ```
+## `secr` Model fits
+
+### Model $M_0$
+```{r}
+fm_M0 <- secr.fit(
+  sch,
+  model=list(D=~1, g0=~1, sigma=~1),
+  details = list(fastproximity = FALSE), 
+  buffer=150, 
+  trace=FALSE, 
+  ncores=3
+)
+
+coef(fm_M0)
+predict(fm_M0)
+```
+
+### Model $M_t$
+
+```{r}
+fm_Mt <- secr.fit(
+  sch, 
+  model=list(D=~1, g0=~t, sigma=~1),
+  buffer=150, 
+  trace=FALSE, 
+  ncores=3
+)
+
+coef(fm_Mt)
+predict(fm_Mt)
+```
+
+### Determine proper buffer value
+
+```{r, warning = FALSE}
+# We can graph the predicted values and visually expect when buffer is large enough for estimates to level off
+
+buffer_seq <- seq(150, 1550, by = 100)
+
+est_buffer <- matrix(0, nrow = length(buffer_seq), ncol = 2)
+
+for(i in 1:length(buffer_seq)) {
+  est_buffer[i,1] <- buffer_seq[i]
+  est_buffer[i,2] <- predict(update(fm_M0, buffer=buffer_seq[i]))[1,]$estimate
+}
+
+plot(
+  x=est_buffer[,1],
+  y=est_buffer[,2],
+  xlab = "Buffer Value",
+  ylab = "Estimate"
+)
+```
+
+
+### Refit `secr` models
+
+We see that it levels off around 800m, so we can refit our models with `buffer=800`.
+
+```{r}
+fm_M0_updated <- secr.fit(
+  sch,
+  model=list(D=~1, g0=~1, sigma=~1),
+  details = list(fastproximity = FALSE), 
+  buffer=800, 
+  trace=FALSE, 
+  ncores=3
+)
+
+coef(fm_M0)
+predict(fm_M0)
+```
+
+```{r}
+fm_Mt_updated <- secr.fit(
+  sch, 
+  model=list(D=~1, g0=~t, sigma=~1),
+  buffer=800, 
+  trace=FALSE, 
+  ncores=3
+)
+
+coef(fm_Mt)
+predict(fm_Mt)
+```
+
+## `JAGS` Models
+
+```{r}
+load("jags_bear_data.gzip")
+
+# determine and tabulate the number of captures per bear
+capture_freq <- apply(
+  caps.2016,
+  1, 
+  sum
+)
+table(capture_freq)
+
+# number of spatial recaptures
+n_locations <- apply(
+  caps.2016, 
+  1, 
+  function(bear) {
+    sum(rowSums(bear) > 0)
+  }
+)
+table(n_locations)
+```
+
+```{r}
+M <- 100 # population cap
+J <- length(dimnames(caps.2016)[[2]]) # nTraps
+K <- length(dimnames(caps.2016)[[3]]) # nOccasions
+
+caps_aug <- array(0, c(M, J, K))
+caps_aug[1:nrow(caps.2016),,] <- caps.2016
+
+jags_data <- list(
+  y=caps_aug,
+  M=M,
+  J=J,
+  K=K,
+  x=traps,
+  xlim=c(min(traps[,1])-1000,max(traps[,1])+1000),
+  ylim=c(min(traps[,2])-1000,max(traps[,2])+1000)
+)
+
+jags_inits <- function() {
+  si <- cbind(runif(M, min(traps[,1]), max(traps[,1])),
+              runif(M, min(traps[,2]), max(traps[,2])))
+
+  for(i in 1:nrow(caps.2016)) {
+    traps_with_dets_i <- rowSums(caps.2016[i,,] > 0) > 0
+
+    si[i,] <- colMeans(
+      traps[traps_with_dets_i, , drop = FALSE]
+    )
+  }
+
+  list(
+    z = rep(1, M),
+    psi = runif(1),
+    s = si,
+    g = rep(runif(1, 0.1, 0.9), K),
+    sigma = runif(1, 100, 500)
+  )
+}
+
+jags_pars <- c("g", "sigma", "EN", "N")
+```
+
+```{r}
+model_string_Mt <- "
+model {
+for(i in 1:K) {
+  g[i] ~ dunif(0,1)
+}
+sigma ~ dunif(1, 2000)  
+psi ~ dunif(0, 1)      
+
+for(i in 1:M) {
+  s[i,1] ~ dunif(xlim[1], xlim[2]) 
+  s[i,2] ~ dunif(ylim[1], ylim[2]) 
+  z[i] ~ dbern(psi)               
+  for(j in 1:J) {
+    dist[i,j] <- sqrt((s[i,1]-x[j,1])^2 + (s[i,2]-x[j,2])^2)
+    for(k in 1:K) {
+      p[i,j,k] <- g[k]*exp(-dist[i,j]^2/(2*sigma^2))
+      y[i,j,k] ~ dbern(z[i]*p[i,j,k])
+    }
+  }
+}
+
+EN <- M*psi  
+N <- sum(z) 
+}
+"
+
+model_file_Mt <- tempfile(fileext = ".jags")
+writeLines(model_string_Mt,
+           con = model_file_Mt
+           )
+
+jags_post <- jags.basic(
+  data=jags_data,
+  inits=jags_inits,
+  parameters.to.save = jags_pars,
+  model.file = model_file_Mt,
+  n.chains = 3,
+  n.adapt = 100,
+  n.burnin = 0,
+  n.iter = 2000,
+  parallel = TRUE
+)
+```
+
+
+
+
+
