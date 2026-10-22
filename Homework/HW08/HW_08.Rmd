@@ -65,9 +65,20 @@ buffer_seq <- seq(150, 1550, by = 100)
 
 est_buffer <- matrix(0, nrow = length(buffer_seq), ncol = 2)
 
+#install.packages("progress")
+library(progress)
+
+n_iter <- length(buffer_seq)
+pb <- progress_bar$new(
+  format = "  Plodding along [:bar] :percent eta: :eta",
+  total = n_iter, 
+  width = 60
+)
+
 for(i in 1:length(buffer_seq)) {
   est_buffer[i,1] <- buffer_seq[i]
   est_buffer[i,2] <- predict(update(fm_M0, buffer=buffer_seq[i]))[1,]$estimate
+  pb$tick()
 }
 
 plot(
