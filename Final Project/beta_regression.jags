@@ -1,0 +1,28 @@
+
+model {
+
+  # Priors
+  beta0 ~ dnorm(0, 0.01)
+  beta_modern ~ dnorm(0, 0.01)
+  beta_spatial ~ dnorm(0, 0.01)
+  beta_interaction ~ dnorm(0, 0.01)
+  
+  # Beta precision
+  phi ~ dgamma(2, 0.1)
+
+  # Likelihood
+  for(i in 1:N) {
+  
+    y[i] ~ dbeta(
+      mu[i] * phi,
+      (1- mu[i]) * phi
+    )
+    
+    logit(mu[i]) <-
+      beta0 +
+      beta_modern * modern[i] +
+      beta_spatial * spatial[i] +
+      beta_interaction * modern[i] * spatial[i]
+  }
+}
+

@@ -1,0 +1,461 @@
+---
+title: "Bayesian Modeling of Epidemic Intensity in Spatially Structured Bat Roosts"
+author: "Henry Traynor"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE
+)
+
+set.seed(123)
+```
+
+# Abstract
+
+# Introduction
+
+# Methods
+
+## Spatial Model
+
+I used a spatially explicit simulation model to investigate how the proportion of modern buildings and the spatial distribution of those roosts influence epidemic dynamics. The model represents bat populations distributed among discrete roosts across a two-dimensional landscape.
+
+I varied the proportion of modern roosts (`prop_modern`) from 0 to 1 in increments of 0.25. Spatial structure was varied by specifying the number of clusters of roosts on the landscape and the expected standard deviation of the distance from a given roost to the center of the roost's assigned cluster. This gave me landscapes that were highly clustered, thus highly inter-connected, and landscapes that were distributed broadly across space.
+
+To quantify the spatial arrangement of roosts, I calculated the Clark-Evans aggregation index $R$for each landscape. This statistic describes the spatial distribution of points relative to the expected distribution given complete spatial randomness. Lower values ($R<1$) indicate greater clustering, higher values $(R>1)$ indicate greater dispersion, and $R\approx1$ indicated complete spatial randomness.
+
+## Population Movement and Epidemic Dynamics
+
+Individual bats were classified as susceptible, infected, or recovered (SIR). During the daytime phase of the model, infection dynamics were governed by standard SIR dynamics within each roost.
+
+$$\frac{dS}{dt}=-\beta\frac{SI}{N}$$ $$\frac{dI}{dt}=\beta\frac{SI}{N}-\gamma I$$ $$\frac{dR}{dt}=\gamma I$$ where,
+
+- $N$ is the total number of bats a roost
+- $\beta$ is the rate at which disease is transmitted per contact between a susceptible and infectious bat
+- $\gamma$ is the rate at which infected bats recover
+
+At night, bats dispersed across the landscape and returned to a roost, carrying their disease-state with them. Particular methods for bat movement can be found
+
+## Data Generation
+
+### Defining Parameter Space
+
+```{r Data Generation Setup, message=FALSE}
+# Libraries
+# Install first time with commented line below or for updates
+#remotes::install_github("HenryTraynor/RoostEpiPkg")
+library(RoostEpiPkg)
+
+library(dplyr)
+library(ggplot2)
+library(progress)
+
+# Paired spatial settings
+spatial_settings <- data.frame(
+  spatial_setting = 1:9,
+  num_clusters = c(1, 1, 2, 3, 5, 8, 12, 20, 25),
+  sd = c(0.02, 0.05, 0.04, 0.06, 0.08,
+         0.10, 0.12, 0.15, 0.20)
+)
+
+# Modernization Gradient
+prop_modern_values <- seq(0, 1, by = 0.25)
+
+# Infection Parameters
+beta <- 0.5
+gamma <- 0.03
+
+# Experiment Parameters
+n_replicates <- 1
+n_days <- 40
+num_roosts <- 25
+nx <- 50
+ny <- 50
+
+# All combinations of experimental conditions
+parameter_grid <- expand.grid(
+  prop_modern = prop_modern_values,
+  spatial_setting = spatial_settings$spatial_setting,
+  replicate = seq_len(n_replicates)
+)
+
+# TEMPORARY
+parameter_grid_small <- parameter_grid[c(TRUE,FALSE),]
+
+nrow(parameter_grid_small) # number of simulations
+
+# Function for calculating metrix of CSR
+calculate_clark_evans <- function(x, y) {
+  coords <- cbind(x, y)
+  n <- nrow(coords)
+
+  if (n < 2) {
+    return(NA_real_)
+  }
+
+  distances <- as.matrix(dist(coords))
+  diag(distances) <- Inf
+
+  observed_mean <- mean(apply(distances, 1, min))
+
+  # Approximate expected mean nearest-neighbor distance
+  # for complete spatial randomness in a unit-area domain.
+  expected_mean <- 0.5 / sqrt(n)
+
+  observed_mean / expected_mean
+}
+
+```
+
+### Simulating Across Parameter Space
+
+```{r Data Generation, eval=FALSE, message=FALSE}
+# Function to run one simulation for cleanliness
+run_one_simulation <- function(
+    prop_modern,
+    spatial_setting,
+    replicate,
+    spatial_settings,
+    num_roosts,
+    nx,
+    ny,
+    n_days,
+    beta,
+    gamma
+) {
+
+  # Select spatial parameters
+  setting <- spatial_settings[
+    spatial_settings$spatial_setting == spatial_setting,
+  ]
+
+  nc <- setting$num_clusters
+  cluster_sd <- setting$sd
+
+  # Generate landscape and roost capacities
+  roost_info <- create_roosts(
+    num_roosts = num_roosts,
+    num_clusters = nc,
+    sd = cluster_sd,
+    prop_modern = prop_modern
+  )
+
+  # Measure realized spatial structure
+  clark_evans_R <- calculate_clark_evans(
+    roost_info$x,
+    roost_info$y
+  )
+
+  # Initialize roost populations before running the simulation
+  roost_info <- initialize_roost_populations(
+    roost_info
+  )
+
+  total_population_initial <- sum(roost_info$N)
+  total_capacity <- sum(roost_info$N_max)
+
+  # Set up movement and epidemic model
+  spatial_params <- create_spatial_params(
+    nx = nx,
+    ny = ny
+  )
+
+  movement_params <- setup_movement(
+    roost_info,
+    spatial_params
+  )
+
+  epidemic_params <- create_epidemic_params(
+    beta = beta,
+    gamma = gamma,
+    model = "SIR"
+  )
+
+  # Run epidemic simulation
+  sim <- run_simulation(
+    roost_info = roost_info,
+    spatial_params = spatial_params,
+    movement_params = movement_params,
+    epidemic_params = epidemic_params,
+    n_days = n_days
+  )
+
+  # Extract daily epidemic outcomes
+  daily_results <- bind_rows(
+    lapply(seq_along(sim), function(day_index) {
+
+      roosts <- sim[[day_index]]$roosts
+
+      total_N <- sum(roosts$N)
+      total_I <- sum(roosts$I)
+
+      data.frame(
+        day = day_index - 1L,
+        total_population = total_N,
+        total_infected = total_I,
+        prevalence = if (total_N > 0) {
+          total_I / total_N
+        } else {
+          NA_real_
+        }
+      )
+    })
+  )
+
+  # Identify peak among days with valid prevalence
+  valid_days <- which(is.finite(daily_results$prevalence))
+
+  if (length(valid_days) == 0) {
+    peak_prevalence <- NA_real_
+    peak_infected <- NA_real_
+    time_to_peak <- NA_integer_
+  } else {
+    peak_value <- max(
+      daily_results$prevalence[valid_days]
+    )
+
+    peak_index <- valid_days[
+      which(daily_results$prevalence[valid_days] == peak_value)[1]
+    ]
+
+    peak_prevalence <- daily_results$prevalence[peak_index]
+    peak_infected <- daily_results$total_infected[peak_index]
+    time_to_peak <- daily_results$day[peak_index]
+  }
+
+  # Record epidemic and landscape summary
+  data.frame(
+    prop_modern = prop_modern,
+    spatial_setting = spatial_setting,
+    num_clusters = nc,
+    sd = cluster_sd,
+    Clark_Evans_R = clark_evans_R,
+    replicate = replicate,
+    total_population_initial = total_population_initial,
+    total_capacity = total_capacity,
+    peak_infected = peak_infected,
+    peak_prevalence = peak_prevalence,
+    time_to_peak = time_to_peak
+  )
+}
+
+#-------------------------
+# SIMULATION
+#-------------------------
+
+#install.packages(c("future", "future.apply", "parallelly", "progressr"))
+library(future)
+library(future.apply)
+library(parallelly)
+library(progressr)
+
+# Set up parallel processing (leave one core free)
+n_workers <- max(1, parallelly::availableCores() - 1)
+
+plan(multisession, workers = n_workers)
+
+handlers("progress")
+
+with_progress({
+
+  p <- progressor(steps = nrow(parameter_grid_small))
+
+  results <- future_lapply(
+    seq_len(nrow(parameter_grid_small)),
+    function(i) {
+
+      params <- parameter_grid_small[i, ]
+
+      result <- tryCatch(
+        run_one_simulation(
+          prop_modern = params$prop_modern,
+          spatial_setting = params$spatial_setting,
+          replicate = params$replicate,
+          spatial_settings = spatial_settings,
+          num_roosts = num_roosts,
+          nx = nx,
+          ny = ny,
+          n_days = 60,
+          beta = beta,
+          gamma = gamma
+        ),
+        error = function(e) {
+          message(
+            "Simulation ", i, " failed: ",
+            conditionMessage(e)
+          )
+          NULL
+        }
+      )
+
+      p()  # Update progress after this simulation finishes
+
+      result
+    },
+    future.seed = TRUE
+  )
+
+})
+
+simulation_results <- bind_rows(results)
+
+plan(sequential)
+
+# Save data
+
+# Create a folder for simulation output
+dir.create("data")
+# Save the results as RDS and CSV
+saveRDS(
+  simulation_results,
+  file = "data/simulation_results_60days_small.rds"
+)
+write.csv(
+  simulation_results,
+  file = "data/simulation_results_60days_small.csv",
+  row.names = FALSE
+)
+```
+
+```{r Load data}
+simulation_results <- readRDS(
+  "data/simulation_results_60days_small.rds"
+)
+```
+
+## Bayesian Modeling
+
+I modeled peak prevalence as a Beta-distributed response:
+
+$$Y_i \sim \textrm{Beta}(\mu_i\phi_i, (1-\mu_i)\phi)$$ $$\textrm{logit}(\mu_i) = \beta_0+\beta_1M_i+\beta_2R_i+\beta_3M_iR_i$$ where:
+
+- $Y_i$ is the peak prevalence
+- $M_i$ is `prop_modern`
+- $R_i$ is the standardized Clark-Evans spatial index
+- $\phi$ is the precision parameter; higher values mean less residual variation
+
+### Prepare Data for `JAGS`
+
+```{r, message=FALSE}
+library(jagsUI)
+
+dat <- simulation_results
+
+# Standardize the spatial agg. index
+dat$R_scaled <- as.numeric(scale(dat$Clark_Evans_R))
+
+# center modernization around 0.5
+dat$modern_c <- dat$prop_modern - 0.5
+
+jags_data <- list(
+  N = nrow(dat),
+  y = dat$peak_prevalence,
+  modern = dat$modern_c,
+  spatial = dat$R_scaled
+)
+```
+
+### Fit model in `JAGS`
+
+```{r}
+model_string <- "
+model {
+
+  # Priors
+  beta0 ~ dnorm(0, 0.01)
+  beta_modern ~ dnorm(0, 0.01)
+  beta_spatial ~ dnorm(0, 0.01)
+  beta_interaction ~ dnorm(0, 0.01)
+  
+  # Beta precision
+  phi ~ dgamma(2, 0.1)
+
+  # Likelihood
+  for(i in 1:N) {
+  
+    y[i] ~ dbeta(
+      mu[i] * phi,
+      (1- mu[i]) * phi
+    )
+    
+    logit(mu[i]) <-
+      beta0 +
+      beta_modern * modern[i] +
+      beta_spatial * spatial[i] +
+      beta_interaction * modern[i] * spatial[i]
+  }
+}
+"
+
+writeLines(model_string, "beta_regression.jags")
+```
+
+```{r, results='hide'}
+# Initial values for each chain
+inits <- function() {
+  list(
+    beta0 = 0,
+    beta_modern = 0,
+    beta_spatial = 0,
+    beta_interaction = 0,
+    phi = 10
+  )
+}
+
+parameters <- c(
+  "beta0",
+  "beta_modern",
+  "beta_spatial",
+  "beta_interaction",
+  "phi"
+)
+
+fit <- jags(
+  data = jags_data,
+  inits = inits,
+  parameters.to.save = parameters,
+  model.file = "beta_regression.jags",
+  n.chains = 3,
+  n.adapt = 1000,
+  n.iter = 6000,
+  n.burnin = 1000,
+  parallel = TRUE
+)
+```
+
+# Results
+
+```{r}
+print(fit)
+
+plot(fit)
+
+posterior_summary <- as.data.frame(fit$summary)
+
+posterior_summary$parameter <- rownames(posterior_summary)
+
+posterior_summary <- posterior_summary[
+  ,
+  c(
+    "parameter",
+    "mean",
+    "sd",
+    "2.5%",
+    "50%",
+    "97.5%",
+    "Rhat",
+    "n.eff"
+  )
+]
+
+rownames(posterior_summary) <- NULL
+
+print(posterior_summary)
+```
+
+# Discussion
+
+# Literature Cited
