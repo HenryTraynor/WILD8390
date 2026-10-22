@@ -2,7 +2,9 @@
 title: "Bayesian Modeling of Epidemic Intensity in Spatially Structured Bat Roosts"
 author: "Henry Traynor"
 date: "`r format(Sys.Date(), '%B %d, %Y')`"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -15,7 +17,13 @@ set.seed(123)
 
 # Abstract
 
+Human-driven landscape modification can influence wildlife disease dynamics by changing host population size and spatial organization. Modern buildings may support larger populations than traditional structures, potentially altering epidemic intensity. I simulated epidemics on landscapes with a gradient of modern building presence and spatial clustering to determine the effect of these factors on epidemic intensity using a spatially explicit and density dependent movement process. Epidemic intensity was measured using peak prevalence, peak infected abundance, and time to peak. I used a Bayesian regression to estimate interactions between modernization, spatial structure, and peak prevalence.
+
 # Introduction
+
+Landscape modification can alter wildlife disease dynamics by changing both host population density and the spatial distribution of individuals. In bats, modern buildings may provide roosts with greater occupancy capacity than traditional structures, potentially increasing the number of hosts available for pathogen transmission. However, the influence of roost modernization may depend on how roosts are distributed across the landscape, as spatial clustering can affect patterns of host movement and contact.
+
+Understanding the relative contributions of host population size and spatial structure is important for predicting how human-driven landscape change influences epidemic dynamics. In this study, I used simulated epidemics to investigate how the proportion of modern building structures and the spatial aggregation of roosts influence epidemic intensity. I quantified epidemic intensity using peak infection prevalence and used Bayesian regression to estimate the interactions between landscape characteristics and epidemic behavior.
 
 # Methods
 
@@ -25,7 +33,7 @@ I used a spatially explicit simulation model to investigate how the proportion o
 
 I varied the proportion of modern roosts (`prop_modern`) from 0 to 1 in increments of 0.25. Spatial structure was varied by specifying the number of clusters of roosts on the landscape and the expected standard deviation of the distance from a given roost to the center of the roost's assigned cluster. This gave me landscapes that were highly clustered, thus highly inter-connected, and landscapes that were distributed broadly across space.
 
-To quantify the spatial arrangement of roosts, I calculated the Clark-Evans aggregation index $R$for each landscape. This statistic describes the spatial distribution of points relative to the expected distribution given complete spatial randomness. Lower values ($R<1$) indicate greater clustering, higher values $(R>1)$ indicate greater dispersion, and $R\approx1$ indicated complete spatial randomness.
+To quantify the spatial arrangement of roosts, I calculated the Clark-Evans aggregation index ($R$) for each landscape. This statistic describes the spatial distribution of points relative to the expected distribution given complete spatial randomness. Lower values ($R<1$) indicate greater clustering, higher values $(R>1)$ indicate greater dispersion, and $R\approx1$ indicates complete spatial randomness.
 
 ## Population Movement and Epidemic Dynamics
 
@@ -37,7 +45,25 @@ $$\frac{dS}{dt}=-\beta\frac{SI}{N}$$ $$\frac{dI}{dt}=\beta\frac{SI}{N}-\gamma I$
 - $\beta$ is the rate at which disease is transmitted per contact between a susceptible and infectious bat
 - $\gamma$ is the rate at which infected bats recover
 
-At night, bats dispersed across the landscape and returned to a roost, carrying their disease-state with them. Particular methods for bat movement can be found
+At night, bats dispersed across the landscape and returned to a roost, carrying their disease-state with them. Particular methods for bat movement can be found [here](https://github.com/HenryTraynor/RoostEpiPkg/blob/main/Model_Description.pdf) on the Github repository for `RoostEpiPkg`, a package I developed to streamline the workflow of my thesis. This package can be downloaded using: `remotes::install_github("HenryTraynor/RoostEpiPkg")`. Vignettes are available for most of the functions in the package.
+
+Each simulation was ran for 60 days. The transmission and recovery parameters were specified as $\beta =0.5$ and $\gamma = 0.03$. The simulation recorded the number of susceptible, infected, and recovered bats in each roost over time, allowing epidemic outcomes to be summarized. I quantified epidemic intensity using peak prevalence $P_{\textrm{peak}}$, the maximum daily proportion of the total bat population that was infected.
+
+$$P_{\textrm{peak}} = \max_t \left(\frac{\sum_j I_{jt}}{\sum_j N_{jt}} \right)$$
+where $I_{jt}$ is the number of infected bats in roost $j$ on day $t$ and $N_{jt}$ is the total population in that roost on that day.
+
+## Bayesian Statistical Analysis
+
+I used a Bayesian model in `JAGS` using the `jagsUI` package to evaluate the effects of landscape structure and building modernization on peak prevalence.
+
+Since prevalence is a continuous proportion on $[0,1]$, I modeled peak prevalence as a Beta-distributed response:
+
+$$Y_i \sim \textrm{Beta}(\mu_i\phi_i, (1-\mu_i)\phi)$$ $$\textrm{logit}(\mu_i) = \beta_0+\beta_1M_i+\beta_2R_i+\beta_3M_iR_i$$ where:
+
+- $Y_i$ is the peak prevalence
+- $M_i$ is `prop_modern`
+- $R_i$ is the standardized Clark-Evans spatial index
+- $\phi$ is the precision parameter; higher values mean less residual variation
 
 ## Data Generation
 
@@ -325,17 +351,6 @@ simulation_results <- readRDS(
   "data/simulation_results_60days_small.rds"
 )
 ```
-
-## Bayesian Modeling
-
-I modeled peak prevalence as a Beta-distributed response:
-
-$$Y_i \sim \textrm{Beta}(\mu_i\phi_i, (1-\mu_i)\phi)$$ $$\textrm{logit}(\mu_i) = \beta_0+\beta_1M_i+\beta_2R_i+\beta_3M_iR_i$$ where:
-
-- $Y_i$ is the peak prevalence
-- $M_i$ is `prop_modern`
-- $R_i$ is the standardized Clark-Evans spatial index
-- $\phi$ is the precision parameter; higher values mean less residual variation
 
 ### Prepare Data for `JAGS`
 
