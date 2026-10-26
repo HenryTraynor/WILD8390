@@ -3,6 +3,7 @@ title: "Bayesian Modeling of Epidemic Intensity in Spatially Structured Bat Roos
 author: "Henry Traynor"
 date: "`r format(Sys.Date(), '%B %d, %Y')`"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
 ---
