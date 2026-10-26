@@ -117,8 +117,8 @@ fm_Mt_updated <- secr.fit(
   ncores=3
 )
 
-coef(fm_Mt)
-predict(fm_Mt)
+coef(fm_Mt_updated)
+predict(fm_Mt_updated)
 ```
 
 ## `JAGS` Models
@@ -296,7 +296,7 @@ plot(jags_post_Mt_faster)
 jags_summary <- summary(jags_post_Mt_faster)
 
 jags_estimates <- data.frame(
-  parameter = c("sigma", "EN", "N"),
+  parameter = c("g0", "sigma", "EN", "N"),
   mean = vector("numeric", length=3),
   upper = vector("numeric", length=3),
   lower = vector("numeric", length=3)
@@ -307,6 +307,32 @@ for(i in 1:nrow(jags_estimates)) {
   jags_estimates$upper[i] <- jags_summary$quantiles[jags_estimates$parameter[i],"97.5%"]
   jags_estimates$lower[i] <- jags_summary$quantiles[jags_estimates$parameter[i],"2.5%"]
 }
+
+
+secr_estimates <- data.frame(
+  parameter = c("g0", "sigma","N", "E[N]"),
+  mean = vector("numeric", length=4),
+  upper = vector("numeric", length=4),
+  lower = vector("numeric", length=4)
+)
+
+secr_coef <- coef(fm_Mt_updated)
+secr_N <- region.N(fm_Mt_updated)
+secr_estimates$mean[1] <- secr_coef$beta[3]
+secr_estimates$upper[1] <- secr_coef$ucl[3]
+secr_estimates$lower[1] <- secr_coef$lcl[3]
+secr_estimates$mean[2] <- secr_coef$beta[10]
+secr_estimates$upper[2] <- secr_coef$ucl[10]
+secr_estimates$lower[2] <- secr_coef$lcl[10]
+secr_estimates$mean[3] <- secr_N$estimate[1]
+secr_estimates$upper[3] <- secr_N$ucl[1]
+secr_estimates$lower[3] <- secr_N$lcl[1]
+secr_estimates$mean[4] <- secr_N$estimate[2]
+secr_estimates$upper[4] <- secr_N$ucl[2]
+secr_estimates$lower[4] <- secr_N$lcl[2]
+
+jags_estimates
+secr_estimates
 ```
 
 
