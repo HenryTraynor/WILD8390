@@ -11,12 +11,57 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Set up data
 ```{r}
-setwd("C:/Users/rsc51785/Dropbox/Correia_PhD_Research/Courses/Fall 2026/WILD 8390/Final Project")
-
-deerdata <- read.csv("deerdata.csv")
+setwd("C:/Users/het11835/Documents/WILD8390/Peer Review/Correia")
+getwd()
+deerdata <- read.csv("1207619-4509529 - Rachel Correia - Oct 22, 2026 252 PM - deerdata.csv")
 
 head(deerdata)
 str(deerdata)
+
+age <- deerdata$age_at_capture
+sex <- deerdata$sex
+
+df <- data.frame(age, sex)
+library(dplyr)
+summary_df <- df %>%
+  group_by(sex) %>%
+  summarise(
+    mean_age = mean(age, na.rm = TRUE),
+    var_age  = var(age, na.rm = TRUE),
+    sd_age   = sd(age, na.rm = TRUE) # Square root of variance
+  )
+
+library(ggplot2)
+ggplot(summary_df, aes(x = sex, y = mean_age, fill = sex)) +
+  geom_col(width = 0.5, show.legend = FALSE) +
+  geom_errorbar(
+    aes(ymin = mean_age - sd_age, ymax = mean_age + sd_age),
+    width = 0.15,
+    linewidth = 0.8
+  ) +
+  labs(
+    title = "Average Age by Sex (±1 SD)",
+    x = "Sex",
+    y = "Age (Years)"
+  ) +
+  theme_minimal()
+
+length(which(deerdata$sex == "M"))
+length(which(deerdata$sex == "F"))
+
+final_age <- data.frame(
+  age = vector("numeric", length=length(age)),
+  censored = vector(length=length(age))
+)
+
+ages <- as.numeric(y)
+
+for(i in 1:34) {
+  final_age$age[i] <- ages[i]/365 + deerdata$age_at_capture[i]
+  final_age$censored[i] <- ages[i+34]
+  
+}
+final_age$censored <- !as.logical(final_age$censored)
 
 library(survival)
 
