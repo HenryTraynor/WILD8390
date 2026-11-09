@@ -1,0 +1,209 @@
+---
+title: "Final Project - WILD8390"
+author: "Rachel Correia"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Set up data
+```{r}
+setwd("C:/Users/rsc51785/Dropbox/Correia_PhD_Research/Courses/Fall 2026/WILD 8390/Final Project")
+
+deerdata <- read.csv("deerdata.csv")
+
+head(deerdata)
+str(deerdata)
+
+library(survival)
+
+#create survival object
+#event = 1 is mortality, event = 0 is right-censored (survived)
+y <- Surv(deerdata$survival_time, deerdata$event)
+y 
+```
+
+
+# Overall Kaplan-Meier survival (2.2.1.)
+```{r}
+#Estimate overall Kaplan-Meier survival function
+km.all <- survfit(y ~ 1)
+km.all
+
+
+#Plot overall Kaplan-Meier curve
+plot(km.all,
+     xlab = "Days since capture",
+     ylab = "Survivorship",
+     main = "Kaplan-Meier Survival")
+```
+
+
+# Kaplan-Meier by Sex (M/F) (2.2.1.)
+```{r}
+#Male vs. female Kaplan-Meier function
+km.sex <- survfit(y ~ sex, data = deerdata)
+km.sex
+
+
+#Plot the Kaplan-Meier curve
+plot(km.sex,
+     col = c("steelblue", "firebrick"),
+     lty = 1,
+     lwd = 2,
+     xlab = "Days since capture",
+     ylab = "Survivorship",
+     main = "Kaplan-Meier Survival by Sex")
+legend("bottomleft",
+       legend = c("Female", "Male"),
+       col = c("steelblue", "firebrick"),
+       lty = 1,
+       lwd = 2)
+
+#Compare survival distributions between males and females
+survdiff(y ~ sex, data = deerdata)
+```
+
+# Parametric survival model (2.2.2.)
+```{r}
+#Sex
+pm.sex <- survreg(y ~ sex, data = deerdata, dist = "exponential")
+summary(pm.sex)
+
+#Age 
+pm.age <- survreg(y ~ age_at_capture, data = deerdata, dist = "exponential")
+summary(pm.age)
+
+#Combined sex and age 
+pm.both <- survreg(y ~ sex + age_at_capture, data = deerdata, dist = "exponential")
+summary(pm.both)
+```
+
+# Plot hazard rates by sex (2.2.2.)
+```{r}
+alpha.hat <- coef(pm.sex)
+hazard.F <- 1/exp(alpha.hat[1])
+hazard.M <- 1/exp(alpha.hat[1] + alpha.hat[2])
+par(mar = c(5, 8, 4, 2),
+    mgp = c(4, 1, 0))
+barplot(c(hazard.F, hazard.M),
+        names.arg = c("Female", "Male"),
+        col = c("gray70", "gray40"),
+        ylab = "Estimated daily mortality hazard",
+        xlab = "Sex",
+        main = "Estimated Mortality Hazard by Sex",
+        cex.main = 1.1,
+        cex.lab = 0.9,
+        cex.axis = 0.85,
+        las = 1,
+        ylim = c(0, 0.0035))
+```
+
+
+# Plot hazard rates by age (2.2.2.)
+```{r}
+alpha.hat <- coef(pm.age)
+plot(function(x) 1/exp(alpha.hat[1] + alpha.hat[2]*x),
+     from = min(deerdata$age_at_capture, na.rm = TRUE),
+     to = max(deerdata$age_at_capture, na.rm = TRUE),
+     xlab = "Age at capture (years)",
+     ylab = "Estimated daily mortality hazard",
+     col = "blue",
+     lwd = 2)
+```
+
+
+# Cox proportional hazards models (2.2.3)
+```{r}
+#Sex
+cox.sex <- coxph(y ~ sex, data = deerdata)
+summary(cox.sex)
+
+#Age
+cox.age <- coxph(y ~ age_at_capture, data = deerdata)
+summary(cox.age)
+
+#Combined sex and age
+cox.both <- coxph(y ~ sex + age_at_capture, data = deerdata)
+summary(cox.both)
+
+#Test proprtional hazards assumption
+cox.zph(cox.sex)
+cox.zph(cox.age)
+cox.zph(cox.both)
+```
+
+
+# Cox model plot (2.2.3)
+```{r}
+#Create data for male and female deer at mean age
+newdata <- data.frame(
+  sex = c("F", "M"),
+  age_at_capture = rep(mean(deerdata$age_at_capture,
+                            na.rm = TRUE), 2))
+
+#Calculate predicted survival
+cox.pred <- survfit(cox.both, newdata = newdata)
+
+#Adjust margins
+par(mar = c(5, 6, 3, 2),
+    mgp = c(3.5, 1, 0))
+
+#Plot predicted survival
+plot(cox.pred,
+     col = c("steelblue", "firebrick"),
+     lwd = 2,
+     lty = 1,
+     xlab = "Days since capture",
+     ylab = "Survivorship",
+     main = "Cox Proportional Hazards Model",
+     ylim = c(0, 1),
+     mark.time = FALSE,
+     las = 1)
+
+#Add legend
+legend("bottomleft",
+       legend = c("Female", "Male"),
+       col = c("steelblue", "firebrick"),
+       lwd = 2,
+       lty = 1,
+       bty = "n")
+```
+
+
+# Effect of mortality source (descriptive)
+```{r}
+#Mortality source
+mortality.table <- table(deerdata$sex, deerdata$mortality_source)
+
+mortality.table
+
+#Mortality percentages by sex
+prop.table(mortality.table, margin = 1) * 100
+```
+
+
+# Competing risks analysis (2.2.4.)
+```{r}
+#3 mortality causes - hunter, natural, and other
+
+#Create competing risks event factor
+deerdata$event_cr <- factor(
+  deerdata$event_code,
+  levels = c(0, 1, 2, 3),
+  labels = c("censored", "hunter", "natural", "other"))
+
+#Fit competing risks model
+cr_model <- survfit(Surv(survival_time, event_cr) ~ 1, data = deerdata)
+summary(cr_model)
+
+
+#Competing risks model by sex
+cr_sex <- survfit(Surv(survival_time, event_cr) ~ sex, data = deerdata)
+summary(cr_sex)
+
+table(deerdata$sex, deerdata$event_cr)
+```

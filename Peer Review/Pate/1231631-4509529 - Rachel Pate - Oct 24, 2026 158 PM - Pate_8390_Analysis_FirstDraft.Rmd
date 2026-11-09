@@ -1,0 +1,78 @@
+---
+title: "Pate_8390_Analysis_FirstDraft"
+author: "Rachel Pate"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r data}
+#Bringing in the data
+behavior <- read.csv("behavior_data.csv")
+covariates <- read.csv("covariates.csv")
+
+#occupancy data, site x day for occurrences in plot
+behavior$Plot <- factor(behavior$Plot, levels=c(unique(behavior$Plot), "YPC2"))
+behavior_data_in <- xtabs(In_Plot_Binary ~ Plot + Date, behavior)
+inplot <- ifelse(as.matrix(behavior_data_in) > 0,1,0)
+
+#out of plot
+behavior_data_out <- xtabs(Out_Plot_Binary ~ Plot + Date, behavior)
+outplot <- ifelse(as.matrix(behavior_data_out) > 0,1,0)
+
+#Covariates
+habtype <- as.numeric(as.factor(covariates$HabitatType))#1= bottomland hardwood, 2= upland hardwood, 3=young pine, 4= mature pine, 5= open pasture
+treatment <- as.numeric(as.factor(covariates$Treatment)) #1=control, 2=fence
+nSites <- nrow(inplot)
+nVisits <- ncol(inplot)
+```
+
+```{r JAGS}
+#IN PLOT
+library(jagsUI)
+jags.data_in <- list(y=as.matrix(inplot), treatment=treatment, habtype=habtype,
+nSites=nSites, nOccasions=nVisits)
+
+#Initial values
+jags.inits <- function() {
+  list(beta0=rnorm(1), alpha0=rnorm(1), z=rep(1, nSites))
+}
+#Parameters to monitor
+jags.pars <- c("beta0", "beta_treatment", "beta_habtype",
+               "alpha0", "alpha_treatment",
+               "sitesOccupied")
+#MCMC
+library(coda)
+jags.g.post.samples_in <- jags.basic(data=jags.data_in, inits=jags.inits,
+                                parameters.to.save=jags.pars,
+                                model.file="Pate_occupancy_jags_FirstDraft.jag",
+                                n.chains=3, n.adapt=100, n.burnin=0,
+                                n.iter=2000, parallel=FALSE)
+
+summary(jags.g.post.samples_in)
+
+```
+```{r JAGS 2}
+library(jagsUI)
+jags.data_out <- list(y=as.matrix(outplot), treatment=treatment, habtype=habtype,
+nSites=nSites, nOccasions=nVisits)
+
+#Initial values
+jags.inits <- function() {
+  list(beta0=rnorm(1), alpha0=rnorm(1), z=rep(1, nSites))
+}
+#Parameters to monitor
+jags.pars <- c("beta0", "beta_treatment", "beta_habtype",
+               "alpha0", "alpha_treatment",
+               "sitesOccupied")
+#MCMC
+library(coda)
+jags.g.post.samples_out <- jags.basic(data=jags.data_out, inits=jags.inits,
+                                parameters.to.save=jags.pars,
+                                model.file="Pate_occupancy_jags_FirstDraft.jag",
+                                n.chains=3, n.adapt=100, n.burnin=0,
+                                n.iter=2000, parallel=FALSE)
+
+summary(jags.g.post.samples_out)
+
+```
+#AI Help: using the xtabs function, setting priors on dummy variables, changing occurrences to binary data (ifelse function), error in my factored dummy variables(Treatment/Habitat Type) (as.numeric(as.factor)) function, syntax error in sitesOccupied <- sum(z)
