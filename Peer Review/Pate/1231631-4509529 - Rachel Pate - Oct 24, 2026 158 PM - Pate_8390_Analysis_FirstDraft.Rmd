@@ -7,8 +7,8 @@ output: html_document
 
 ```{r data}
 #Bringing in the data
-behavior <- read.csv("behavior_data.csv")
-covariates <- read.csv("covariates.csv")
+behavior <- read.csv("1231631-4509529 - Rachel Pate - Oct 24, 2026 158 PM - behavior_data.csv")
+covariates <- read.csv("1231631-4509529 - Rachel Pate - Oct 24, 2026 158 PM - covariates.csv")
 
 #occupancy data, site x day for occurrences in plot
 behavior$Plot <- factor(behavior$Plot, levels=c(unique(behavior$Plot), "YPC2"))
